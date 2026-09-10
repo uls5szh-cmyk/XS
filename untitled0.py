@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Standard G: Drive Auto-Linked Edition)
-- Auto-Linking 4 Core Files under G:\\02_7_M-PQA-RBAC1\\08_PQA_AE\\09_PQA2\\11_PCB\\04_Lessons learn
-- Dual Attachments: Generated Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
+BOSCH | PCB Lesson Learn Quality Studio (Cloud & Local Multi-Platform Edition)
+- Auto-Fallback Directory Scanner (Seamless G: Drive & Linux /mount/src/pcb/)
+- Dual Attachments: Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
 - 1:1 Mirror Prompt with 3-Column Tables for Teams M-PU Bot
 - Recipient-Ready Outlook EML Draft Generation
 =============================================================================
@@ -92,60 +92,75 @@ st.markdown("""
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
     <div>
         <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
-        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量报告规范 · G 盘本地文件全自动直连 · 双附件邮件草稿一键闭环</p>
+        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量报告规范 · 跨平台自适应文件直连 · 双附件邮件草稿一键闭环</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. 侧边栏路径配置 (精准匹配您的 4 个本地 G 盘文件名)
+# 2. 跨平台路径自适应扫描机制 (兼容 Windows G 盘与 Linux 容器)
 # -----------------------------------------------------------------------------
 BASE_G_DIR = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn"
-DEFAULT_EXCEL_PATH = os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx")
-DEFAULT_TEMPLATE_PATH = os.path.join(BASE_G_DIR, "Lessons Learned Report Problem Solving.docx")
-DEFAULT_FEEDBACK_PATH = os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx")
-DEFAULT_MSG_PATH = os.path.join(BASE_G_DIR, "MPQR-AP LL  LL-xxxx-xx  Title 99.04 Delamination PCB.msg")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 TEAMS_BOT_URL = "https://teams.microsoft.com/l/app/ffcadcc0-464f-4110-a065-0e3b4733baa9?source=bot-header-share-entrypoint"
 
-st.sidebar.markdown("### ⚙️ 本地 G 盘数据源配置")
-use_local = st.sidebar.checkbox("使用 G 盘本地固定路径", value=True)
+def resolve_file_path(filename_list):
+    """自适应查找文件路径（优先检索 G 盘，次级检索当前应用目录）"""
+    for fname in filename_list:
+        # 1. 尝试 Windows G 盘绝对路径
+        g_path = os.path.join(BASE_G_DIR, fname)
+        if os.path.exists(g_path):
+            return g_path
+        # 2. 尝试当前工作目录及子目录
+        c_path = os.path.join(CURRENT_DIR, fname)
+        if os.path.exists(c_path):
+            return c_path
+        # 3. 直接在当前相对路径查找
+        if os.path.exists(fname):
+            return fname
+    return None
+
+st.sidebar.markdown("### ⚙️ 数据源路径配置")
+use_local = st.sidebar.checkbox("启用本地/仓库路径自适应检测", value=True)
 
 excel_file = None
 template_file = None
 feedback_file = None
 
+# 自动解析对应文件
+resolved_excel = resolve_file_path(["PCB Lesson Learn Master List.xlsx", "PCB Lesson Learn Master List.xlsm"])
+resolved_template = resolve_file_path([
+    "Blank LL Template complete version.docx",
+    "Lessons Learned Report Problem Solving.docx",
+    "LL Template complete version.docx"
+])
+resolved_feedback = resolve_file_path(["LL Feedback table_Supplier version_V1.xlsx"])
+
 if use_local:
-    excel_path = st.sidebar.text_input("1. Master List 表格路径:", DEFAULT_EXCEL_PATH)
-    template_path = st.sidebar.text_input("2. Word 模板路径:", DEFAULT_TEMPLATE_PATH)
-    feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", DEFAULT_FEEDBACK_PATH)
-    msg_path = st.sidebar.text_input("4. 参考邮件模板路径:", DEFAULT_MSG_PATH)
+    excel_path = st.sidebar.text_input("1. Master List 路径:", value=resolved_excel if resolved_excel else os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx"))
+    template_path = st.sidebar.text_input("2. Word 模板路径:", value=resolved_template if resolved_template else os.path.join(BASE_G_DIR, "Blank LL Template complete version.docx"))
+    feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", value=resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"))
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("##### 📁 本地文件识别状态：")
+    st.sidebar.markdown("##### 📁 文件检测就绪状态：")
     
-    # 状态实时检测
-    if os.path.exists(excel_path):
+    if excel_path and os.path.exists(excel_path):
         excel_file = excel_path
-        st.sidebar.success("✅ Master List: 已就绪")
+        st.sidebar.success(f"✅ Master List: 已就绪\n`{os.path.basename(excel_path)}`")
     else:
-        st.sidebar.error("❌ Master List: 未找到")
+        st.sidebar.error("❌ Master List: 未检测到")
         
-    if os.path.exists(template_path):
+    if template_path and os.path.exists(template_path):
         template_file = template_path
-        st.sidebar.success("✅ Word 模板: 已就绪")
+        st.sidebar.success(f"✅ Word 模板: 已就绪\n`{os.path.basename(template_path)}`")
     else:
-        st.sidebar.error("❌ Word 模板: 未找到")
+        st.sidebar.error("❌ Word 模板: 未检测到")
         
-    if os.path.exists(feedback_path):
+    if feedback_path and os.path.exists(feedback_path):
         feedback_file = feedback_path
-        st.sidebar.success("✅ Feedback 表: 已就绪")
+        st.sidebar.success(f"✅ Feedback 表: 已就绪\n`{os.path.basename(feedback_path)}`")
     else:
-        st.sidebar.warning("⚠️ Feedback 表: 未找到")
-        
-    if os.path.exists(msg_path):
-        st.sidebar.success("✅ 参考邮件模板: 已识别")
-    else:
-        st.sidebar.info("ℹ️ 参考邮件模板: 未检测到")
+        st.sidebar.warning("⚠️ Feedback 表: 未检测到 (生成时将仅附加 Word 报告)")
 else:
     up_excel = st.sidebar.file_uploader("上传 Master List (Excel):", type=["xlsx", "xlsm"])
     up_template = st.sidebar.file_uploader("上传 Word 模板 (.docx):", type=["docx"])
@@ -253,7 +268,7 @@ def load_excel_robust(file_source):
     return df, target_sheet, header_idx
 
 # -----------------------------------------------------------------------------
-# 4. 高鲁棒性 Bot 输出解析器
+# 4. 高鲁棒性 Bot 输出解析器 (支持制表符 \t 与 Markdown 表格双模式)
 # -----------------------------------------------------------------------------
 
 def parse_bot_feber_response(bot_text):
@@ -336,7 +351,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (彻底攻克图片置入与格式)
+# 5. 精准装配 Word 模板核心函数 (紧凑无缝图片置入)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -407,8 +422,8 @@ def insert_content_under_heading(doc, heading_kw, text_value):
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, ng_img=None):
     """
     【表格定向精准装配引擎】
+    - 紧凑置入图片，边距归零，消除大片空白
     - 0. Abstract -> 对齐分离回填 Issue / Problem / Lessons
-    - Picture 单元格 -> 识别包含 'picture' / 'defect' / 'not-ok-part' 的单元格并居中置入不良图片
     - 1. Product/Process -> 分离回填 Product/Process / Component / Sub-Component
     - 2. Problem -> 精准注入正文段落
     - 3. Lessons -> 3列表格 (Lessons | Measures & Sustainable Solutions | Root Cause) 逐行动态增行
@@ -451,12 +466,11 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     insert_content_under_heading(doc, "Problem (Fundamental Problem)", prob_val)
 
-    # 5. 定向精准填充各个表格 (Picture 单元格 / 3. Lessons / 4. Potentially affected)
-    picture_inserted = False
+    # 5. 定向精准填充各个表格 (Picture 紧凑置入 / 3. Lessons / 4. Potentially affected)
     for table in doc.tables:
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
         
-        # A. 扫描所有表格中带有 'picture' / 'defect' / 'not-ok' 的单元格（紧凑嵌入，边距归零）
+        # A. 扫描所有表格中包含 'picture' / 'defect' / 'not-ok' 的单元格（紧凑嵌入，边距归零）
         for row in table.rows:
             for cell in row.cells:
                 c_txt = cell.text.lower().replace(" ", "")
@@ -469,7 +483,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                         p.paragraph_format.space_after = Pt(0)
                         p.paragraph_format.line_spacing = 1.0
                         p.add_run().add_picture(io.BytesIO(ng_img), width=Inches(1.85))
-                        picture_inserted = True
                 elif "ok-part" in c_txt:
                     if ok_img:
                         cell.text = ""
@@ -511,16 +524,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                 if len(row.cells) >= 2 and r_i in w_map:
                     set_cell_formatted_text(row.cells[1], w_map[r_i])
 
-    # 兜底：如果表格里没找到，检查正文段落
-    if not picture_inserted and ng_img:
-        for p in doc.paragraphs:
-            p_txt_clean = p.text.lower().replace(" ", "")
-            if "picture" in p_txt_clean and len(p_txt_clean) < 40:
-                p.text = ""
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.add_run().add_picture(io.BytesIO(ng_img), width=Inches(1.85))
-                break
-
     return doc
 
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
@@ -561,9 +564,8 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = 'Sunny.LIU3@cn.bosch.com'
     msg['To'] = to_emails
-    msg.add_header('X-Unsent', '1') # 草稿可编辑模式
+    msg.add_header('X-Unsent', '1')
     
-    # 注入 HTML 正文
     alt_part = MIMEMultipart('alternative')
     alt_part.attach(MIMEText(html_body, 'html', 'utf-8'))
     msg.attach(alt_part)
@@ -732,10 +734,10 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             if template_file is None:
                 st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
             else:
-                with st.spinner("正在定向装配表格、插入不良图片并生成双附件邮件草稿..."):
+                with st.spinner("正在定向装配表格、紧凑插入不良图片并生成双附件邮件草稿..."):
                     bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                     
-                    # 定向装配 Word 模板 (自动置入当前选中的 ng_img 和 ok_img)
+                    # 定向装配 Word 模板
                     doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_img, ng_img)
                     bio = io.BytesIO()
                     doc.save(bio)
@@ -743,8 +745,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     
                     serial_str = str(selected_row.get(serial_no_col, 'LL-Export'))
                     doc_filename = f"LL_Template_{serial_str}.docx"
-                    
-                    # 生成内含双附件 (Word + Excel 反馈表) 的 EML 草稿
                     eml_bytes = generate_eml_file_dual_attachment(
                         selected_row, 
                         to_emails_str, 
