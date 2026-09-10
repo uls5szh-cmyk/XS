@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep  3 15:49:50 2026
-
-@author: ULS5SZH
-"""
-
-# -*- coding: utf-8 -*-
-"""
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Streamlined & Compact Image Edition)
-- 100% Background Silent Excel Image Extractor (No Cluttered UI Previews)
-- Compact Tight-Fitting Picture Embedding (Zero Blank Space / Margin Zeroing)
-- 1:1 Mirror Prompt with 3-Column Tables & Dynamic Table Population
-- Recipient-Ready Outlook EML Draft Generation with Word Attachment
+BOSCH | PCB Lesson Learn Quality Studio (Dual Attachment & Auto-Archive Edition)
+- Dual Attachments: Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
+- Automatic Background Sync & Archiving to G: Drive Folder
+- 1:1 Mirror Prompt with 3-Column Tables & Dynamic Table Expansion
+- Recipient-Ready Outlook EML Draft Generation
 =============================================================================
 """
 
@@ -40,8 +33,7 @@ from email.header import Header
 st.set_page_config(
     page_title="Bosch | PCB Lesson Learn Quality Studio",
     layout="wide",
-    page_icon="🔴",
-    initial_sidebar_state="expanded"
+    page_icon="🔴"
 )
 
 BOSCH_UI_STYLE = """
@@ -53,185 +45,43 @@ BOSCH_UI_STYLE = """
         --bosch-dark-gray: #1C2B39;
         --bosch-gray: #525F6B;
         --bosch-bg: #F4F6F8;
-        --bosch-border: #DDE3EA;
     }
-
-    /* ================= 全局背景与字体 ================= */
-    html, body, .stApp {
-        background-color: var(--bosch-bg) !important;
-        font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
-    }
-    #MainMenu, footer, header {visibility: hidden;}
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 3rem;
-        max-width: 1400px;
-    }
-
-    /* ================= 顶部博世三段色条 ================= */
+    .stApp { background-color: var(--bosch-bg); }
     .bosch-top-bar {
         height: 6px;
-        width: 100%;
         background: linear-gradient(90deg, #E20015 0%, #E20015 25%, #005691 25%, #005691 65%, #007BC0 65%, #007BC0 100%);
         border-radius: 3px;
-        margin-bottom: 18px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
     }
-
-    /* ================= 顶部品牌头 ================= */
-    .bosch-header-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #FFFFFF;
-        border: 1px solid var(--bosch-border);
-        border-left: 6px solid var(--bosch-red);
-        border-radius: 10px;
-        padding: 18px 26px;
-        margin-bottom: 24px;
-        box-shadow: 0 6px 18px rgba(0, 40, 80, 0.06);
-    }
-    .bosch-header-title {
-        color: var(--bosch-blue);
-        margin: 0;
-        font-weight: 800;
-        font-size: 1.6rem;
-        letter-spacing: 0.3px;
-    }
-    .bosch-header-sub {
-        color: var(--bosch-gray);
-        font-size: 0.92rem;
-        margin: 6px 0 0 0;
-        line-height: 1.5;
-    }
-    .bosch-header-logo {
-        background: var(--bosch-blue);
-        color: #fff;
-        font-weight: 800;
-        font-size: 0.85rem;
-        padding: 8px 16px;
-        border-radius: 20px;
-        letter-spacing: 1px;
-        white-space: nowrap;
-    }
-
-    /* ================= 卡片容器 ================= */
     .bds-card {
         background: #FFFFFF;
-        border: 1px solid var(--bosch-border);
-        border-radius: 10px;
-        padding: 24px 26px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 14px rgba(0, 40, 80, 0.05);
-        transition: box-shadow 0.2s ease-in-out;
+        border: 1px solid #DDE3EA;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
     }
-    .bds-card:hover {
-        box-shadow: 0 8px 20px rgba(0, 40, 80, 0.09);
-    }
-
-    /* ================= 步骤徽标 ================= */
     .bds-step-badge {
         display: inline-block;
         background: var(--bosch-blue);
         color: #FFFFFF;
-        font-size: 0.78rem;
+        font-size: 0.8rem;
         font-weight: 700;
-        letter-spacing: 0.5px;
-        padding: 5px 14px;
+        padding: 4px 12px;
         border-radius: 20px;
-        margin-bottom: 4px;
+        margin-bottom: 10px;
     }
-    .bds-step-title {
-        display: inline-block;
-        margin-left: 10px;
-        color: var(--bosch-dark-gray);
-        font-weight: 700;
-        font-size: 1.15rem;
-        vertical-align: middle;
-    }
-    .bds-step-divider {
-        border: none;
-        border-top: 1px solid var(--bosch-border);
-        margin: 14px 0 18px 0;
-    }
-
-    /* ================= 按钮 ================= */
-    .stButton>button, .stDownloadButton>button {
+    .stButton>button {
         background-color: var(--bosch-blue) !important;
         color: white !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
         font-weight: 600 !important;
         border: none !important;
-        padding: 10px 22px !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0 3px 8px rgba(0, 86, 145, 0.25) !important;
+        padding: 8px 20px !important;
     }
-    .stButton>button:hover, .stDownloadButton>button:hover {
+    .stButton>button:hover {
         background-color: var(--bosch-light-blue) !important;
         color: white !important;
-        transform: translateY(-1px);
-        box-shadow: 0 5px 12px rgba(0, 86, 145, 0.35) !important;
-    }
-    .stLinkButton>a {
-        background-color: var(--bosch-red) !important;
-        color: white !important;
-        border-radius: 6px !important;
-        font-weight: 700 !important;
-        border: none !important;
-        box-shadow: 0 3px 8px rgba(226, 0, 21, 0.25) !important;
-    }
-    .stLinkButton>a:hover {
-        background-color: #C4001A !important;
-    }
-
-    /* ================= 输入框 / 文本域 ================= */
-    .stTextInput>div>div>input,
-    .stTextArea textarea,
-    .stSelectbox div[data-baseweb="select"] {
-        border-radius: 6px !important;
-        border: 1px solid var(--bosch-border) !important;
-    }
-    .stTextArea textarea:focus,
-    .stTextInput>div>div>input:focus {
-        border-color: var(--bosch-blue) !important;
-        box-shadow: 0 0 0 2px rgba(0, 86, 145, 0.15) !important;
-    }
-
-    /* ================= Info / Success / Warning 提示条 ================= */
-    div[data-testid="stAlert"] {
-        border-radius: 8px !important;
-        border-left-width: 5px !important;
-    }
-
-    /* ================= 侧边栏 ================= */
-    section[data-testid="stSidebar"] {
-        background-color: #FFFFFF;
-        border-right: 1px solid var(--bosch-border);
-    }
-    section[data-testid="stSidebar"] .block-container {
-        padding-top: 1.6rem;
-    }
-    section[data-testid="stSidebar"] h3 {
-        color: var(--bosch-blue);
-        font-weight: 700;
-        font-size: 1rem;
-        border-bottom: 2px solid var(--bosch-red);
-        padding-bottom: 6px;
-        margin-bottom: 14px;
-    }
-
-    /* ================= 页脚 ================= */
-    .bosch-footer {
-        text-align: center;
-        color: var(--bosch-gray);
-        font-size: 0.8rem;
-        padding: 18px 0 6px 0;
-        border-top: 1px solid var(--bosch-border);
-        margin-top: 30px;
-    }
-    .bosch-footer span {
-        color: var(--bosch-red);
-        font-weight: 700;
     }
 </style>
 <div class="bosch-top-bar"></div>
@@ -239,20 +89,21 @@ BOSCH_UI_STYLE = """
 st.markdown(BOSCH_UI_STYLE, unsafe_allow_html=True)
 
 st.markdown("""
-<div class="bosch-header-bar">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
     <div>
-        <h2 class="bosch-header-title">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
-        <p class="bosch-header-sub">FEBER 质量报告规范 · 原始数据无损提取 ➔ M-PU Bot 润色 ➔ 模板图文紧凑注入 ➔ 邮件草稿一键闭环</p>
+        <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
+        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 报告标准 · 双附件邮件一键生成 · G 盘自动同步归档 · 3列表格动态增行</p>
     </div>
-    <div class="bosch-header-logo">QUALITY STUDIO</div>
 </div>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. 侧边栏路径配置
+# 2. 侧边栏路径配置（包含反馈表与 G 盘自动归档路径）
 # -----------------------------------------------------------------------------
 DEFAULT_EXCEL_PATH = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn\PCB Lesson Learn Master List.xlsx"
 DEFAULT_TEMPLATE_PATH = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn\LL Template complete version.docx"
+DEFAULT_FEEDBACK_PATH = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn\LL Feedback table_Supplier version_V1.xlsx"
+DEFAULT_ARCHIVE_DIR = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn\Archive"
 TEAMS_BOT_URL = "https://teams.microsoft.com/l/app/ffcadcc0-464f-4110-a065-0e3b4733baa9?source=bot-header-share-entrypoint"
 
 st.sidebar.markdown("### ⚙️ 数据源路径配置")
@@ -260,22 +111,31 @@ use_local = st.sidebar.checkbox("使用本地固定路径 (G 盘)", value=True)
 
 excel_file = None
 template_file = None
+feedback_file = None
 
 if use_local:
     excel_path = st.sidebar.text_input("Master List 路径:", DEFAULT_EXCEL_PATH)
     template_path = st.sidebar.text_input("Word Template 路径:", DEFAULT_TEMPLATE_PATH)
+    feedback_path = st.sidebar.text_input("Feedback 表路径:", DEFAULT_FEEDBACK_PATH)
+    archive_dir = st.sidebar.text_input("G 盘自动归档目录:", DEFAULT_ARCHIVE_DIR)
+    
     if os.path.exists(excel_path): excel_file = excel_path
-    else: st.sidebar.warning("⚠️ 未在指定路径找到 Excel，请手动上传。")
+    else: st.sidebar.warning("⚠️ 未在指定路径找到 Master List Excel。")
     if os.path.exists(template_path): template_file = template_path
-    else: st.sidebar.warning("⚠️ 未在指定路径找到 Word 模板，请手动上传。")
+    else: st.sidebar.warning("⚠️ 未在指定路径找到 Word 模板。")
+    if os.path.exists(feedback_path): feedback_file = feedback_path
+    else: st.sidebar.warning("⚠️ 未在指定路径找到 Feedback Excel 表。")
 else:
     up_excel = st.sidebar.file_uploader("上传 Master List (Excel):", type=["xlsx", "xlsm"])
     up_template = st.sidebar.file_uploader("上传 Word 模板 (.docx):", type=["docx"])
+    up_feedback = st.sidebar.file_uploader("上传 Feedback 反馈表 (.xlsx):", type=["xlsx"])
+    archive_dir = ""
     if up_excel: excel_file = up_excel
     if up_template: template_file = up_template
+    if up_feedback: feedback_file = up_feedback
 
 # -----------------------------------------------------------------------------
-# 3. 辅助解析函数（高可靠性后台静默提取图片）
+# 3. 辅助解析函数
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
@@ -318,8 +178,7 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
         wb = openpyxl.load_workbook(file_source, data_only=True)
         ws = wb[sheet_name]
         
-        col_ng = -1
-        col_ok = -1
+        col_ng, col_ok = -1, -1
         for col_idx in range(1, ws.max_column + 1):
             val = ws.cell(row=header_idx + 1, column=col_idx).value
             if val:
@@ -328,8 +187,7 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
                 if 'ok picture' in val_str: col_ok = col_idx - 1
                 
         excel_target_row = header_idx + 1 + target_row_idx
-        ok_img = None
-        ng_img = None
+        ok_img, ng_img = None, None
         
         for img in getattr(ws, '_images', []):
             try:
@@ -373,7 +231,7 @@ def load_excel_robust(file_source):
     return df, target_sheet, header_idx
 
 # -----------------------------------------------------------------------------
-# 4. 高鲁棒性 Bot 输出解析器 (支持制表符 \t 与 Markdown 表格双模式)
+# 4. 高鲁棒性 Bot 输出解析器
 # -----------------------------------------------------------------------------
 
 def parse_bot_feber_response(bot_text):
@@ -444,10 +302,10 @@ def parse_bot_feber_response(bot_text):
     m_pot = re.search(r'4\.\s*Potentially affected[^\n]*\n([\s\S]*?)(?=5\.\s*Appendix|$)', bot_text, re.I)
     if m_pot:
         t = m_pot.group(1)
-        w1 = re.search(r'What else[^\n\t|]*[\t\|\n](%5B%5E%5Cn%7C%5D+)', t, re.I)
-        w2 = re.search(r'Where can[^\n\t|]*[\t\|\n](%5B%5E%5Cn%7C%5D+)', t, re.I)
-        w3 = re.search(r'When can[^\n\t|]*[\t\|\n](%5B%5E%5Cn%7C%5D+)', t, re.I)
-        w4 = re.search(r'Who else[^\n\t|]*[\t\|\n](%5B%5E%5Cn%7C%5D+)', t, re.I)
+        w1 = re.search(r'What else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w2 = re.search(r'Where can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w3 = re.search(r'When can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w4 = re.search(r'Who else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
         if w1: parsed['What_Else'] = w1.group(1).strip()
         if w2: parsed['Where'] = w2.group(1).strip()
         if w3: parsed['When'] = w3.group(1).strip()
@@ -587,7 +445,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                         p.paragraph_format.space_before = Pt(0)
                         p.paragraph_format.space_after = Pt(0)
                         p.paragraph_format.line_spacing = 1.0
-                        # 调整为紧凑黄金宽度 1.85 英寸，彻底消除大片空白
                         p.add_run().add_picture(io.BytesIO(ng_img), width=Inches(1.85))
                 elif "ok-part" in c_txt:
                     if ok_img:
@@ -632,8 +489,12 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
 
     return doc
 
-def generate_eml_file(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx"):
-    """生成带附件、默认可编辑草稿的 Outlook EML 邮件"""
+def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
+    """
+    【双附件 Outlook 邮件生成引擎】
+    - 附件 1: 生成的 Word 报告 (LL_Template.docx)
+    - 附件 2: 供应商反馈评估表 Excel (LL Feedback table_Supplier version_V1.xlsx)
+    """
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -668,16 +529,26 @@ def generate_eml_file(row_data, to_emails="", doc_bytes=None, doc_filename="LL_T
     msg['To'] = to_emails
     msg.add_header('X-Unsent', '1') # 草稿可编辑模式
     
+    # 注入 HTML 正文
     alt_part = MIMEMultipart('alternative')
     alt_part.attach(MIMEText(html_body, 'html', 'utf-8'))
     msg.attach(alt_part)
     
+    # 附件 1：Word 报告
     if doc_bytes:
         part_doc = MIMEBase('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document')
         part_doc.set_payload(doc_bytes)
         encoders.encode_base64(part_doc)
         part_doc.add_header('Content-Disposition', f'attachment; filename="{doc_filename}"')
         msg.attach(part_doc)
+        
+    # 附件 2：供应商反馈评估表 (Excel)
+    if feedback_bytes:
+        part_fb = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        part_fb.set_payload(feedback_bytes)
+        encoders.encode_base64(part_fb)
+        part_fb.add_header('Content-Disposition', f'attachment; filename="{feedback_filename}"')
+        msg.attach(part_fb)
         
     return msg.as_bytes()
 
@@ -690,6 +561,17 @@ if excel_file is not None and template_file is not None:
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
+        # 读取反馈表 Excel 二进制数据
+        feedback_bytes = None
+        feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
+        if feedback_file is not None:
+            if isinstance(feedback_file, str) and os.path.exists(feedback_file):
+                with open(feedback_file, 'rb') as f:
+                    feedback_bytes = f.read()
+            elif hasattr(feedback_file, 'read'):
+                feedback_file.seek(0)
+                feedback_bytes = feedback_file.read()
+                
         # 过滤 LL Need or not == Y
         ll_need_col = next((c for c in df.columns if 'need or not' in str(c).lower()), 'LL Need or not')
         if ll_need_col in df.columns:
@@ -701,8 +583,7 @@ if excel_file is not None and template_file is not None:
         
         # ==================== STEP 1 ====================
         st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 1</span><span class="bds-step-title">选择台账记录并提取事实</span>', unsafe_allow_html=True)
-        st.markdown('<hr class="bds-step-divider">', unsafe_allow_html=True)
+        st.markdown('<span class="bds-step-badge">STEP 1</span> <h4 style="display:inline; margin-left:8px; color:#005691;">选择台账记录并提取事实</h4>', unsafe_allow_html=True)
         
         search_kw = st.text_input("🔍 搜索记录 (序列号/供应商/失效模式):", placeholder="输入关键字实时过滤...")
         filtered_df = df.copy()
@@ -782,8 +663,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
         # ==================== STEP 2 ====================
         st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 2</span><span class="bds-step-title">一键复制 Prompt 并在 Teams M-PU Bot 润色</span>', unsafe_allow_html=True)
-        st.markdown('<hr class="bds-step-divider">', unsafe_allow_html=True)
+        st.markdown('<span class="bds-step-badge">STEP 2</span> <h4 style="display:inline; margin-left:8px; color:#005691;">一键复制 Prompt 并在 Teams M-PU Bot 润色</h4>', unsafe_allow_html=True)
         
         c_p, c_b = st.columns([3, 1])
         with c_p:
@@ -796,8 +676,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
         # ==================== STEP 3 ====================
         st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 3</span><span class="bds-step-title">粘贴 Bot 回复并一键生成最终交付包</span>', unsafe_allow_html=True)
-        st.markdown('<hr class="bds-step-divider">', unsafe_allow_html=True)
+        st.markdown('<span class="bds-step-badge">STEP 3</span> <h4 style="display:inline; margin-left:8px; color:#005691;">粘贴 Bot 回复并一键生成最终交付包</h4>', unsafe_allow_html=True)
         
         col_in, col_sup = st.columns([3, 2])
         with col_in:
@@ -815,11 +694,11 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             if to_emails_str:
                 st.info(f"📧 **自动收件人:**\n`{to_emails_str}`")
 
-        if st.button("🚀 立即生成标准化 Word 报告与 Outlook 邮件草稿", type="primary", use_container_width=True):
+        if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True):
             if template_file is None:
                 st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
             else:
-                with st.spinner("正在定向装配表格、紧凑插入不良图片并生成邮件附件..."):
+                with st.spinner("正在定向装配表格、插入不良图片、打包双附件并同步归档..."):
                     bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                     
                     # 定向装配 Word 模板 (自动置入当前选中的 ng_img 和 ok_img)
@@ -830,9 +709,34 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     
                     serial_str = str(selected_row.get(serial_no_col, 'LL-Export'))
                     doc_filename = f"LL_Template_{serial_str}.docx"
-                    eml_bytes = generate_eml_file(selected_row, to_emails_str, doc_bytes, doc_filename)
                     
-                    st.success("🎉 生成成功！图片已紧凑居中嵌入，排版整洁紧凑，无多余大片空白。")
+                    # 生成内含双附件 (Word + Excel 反馈表) 的 EML 草稿
+                    eml_bytes = generate_eml_file_dual_attachment(
+                        selected_row, 
+                        to_emails_str, 
+                        doc_bytes, 
+                        doc_filename, 
+                        feedback_bytes, 
+                        feedback_filename
+                    )
+                    
+                    # 【核心功能】：自动同步归档到 G 盘
+                    archived_path_msg = ""
+                    if archive_dir and os.path.exists(archive_dir):
+                        try:
+                            # 写入 Word
+                            w_target = os.path.join(archive_dir, doc_filename)
+                            with open(w_target, 'wb') as f: f.write(doc_bytes)
+                            # 写入 EML
+                            e_target = os.path.join(archive_dir, f"Email_Draft_{serial_str}.eml")
+                            with open(e_target, 'wb') as f: f.write(eml_bytes)
+                            archived_path_msg = f"📁 **已自动同步归档至 G 盘:** `{archive_dir}`"
+                        except Exception as e_arc:
+                            archived_path_msg = f"⚠️ 自动归档至 G 盘失败: {e_arc}"
+                    
+                    st.success("🎉 生成成功！邮件已包含【Word报告 + Excel反馈表】双附件，图片已紧凑居中嵌入。")
+                    if archived_path_msg:
+                        st.info(archived_path_msg)
                     
                     c_d1, c_d2 = st.columns(2)
                     with c_d1:
@@ -845,7 +749,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         )
                     with c_d2:
                         st.download_button(
-                            f"📧 下载 Outlook 草稿 (已带Word附件): Email_Draft_{serial_str}.eml",
+                            f"📧 下载 Outlook 草稿 (含双附件): Email_Draft_{serial_str}.eml",
                             eml_bytes,
                             f"Email_Draft_{serial_str}.eml",
                             mime="message/rfc822",
@@ -857,9 +761,3 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
         st.error(f"❌ 运行异常: {e}")
 else:
     st.info("ℹ️ 请在侧边栏确认 Master List (Excel) 和 Word 模板的文件路径。")
-
-st.markdown("""
-<div class="bosch-footer">
-    Powered by <span>BOSCH</span> Purchasing Quality Region Asia Pacific &nbsp;|&nbsp; Invented for life
-</div>
-""", unsafe_allow_html=True)
