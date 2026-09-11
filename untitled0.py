@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Quality Studio & Executive Intelligence Dashboard (Strict Column Match Edition)
-- Strict Exact Match for 'Complete or not' with Column-Name Diagnostic Print
-- Direct Row-Click Interaction (No Dropdowns: Click table row to inspect)
-- Mode 1: Automated FEBER Word Report & Dual-Attachment Outlook Draft
-- Mode 2: Executive Split Matrix View (Clickable List + Real-time Image Inspector)
+BOSCH | PCB Quality Studio & Executive Intelligence Dashboard (Strict Order Edition)
+- Strict Exact Match for 'Complete or not' Columns & Types
+- Direct Row-Click Table Interaction (100% No Dropdowns, Instant Selection)
+- Dual Attachments: Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
+- Compatible with Local Windows G: Drive & Cloud deployment FALLBACK
 =============================================================================
 """
 
@@ -65,7 +65,7 @@ BOSCH_UI_STYLE = """
         height: 6px;
         background: linear-gradient(90deg, #E20015 0%, #E20015 25%, #005691 25%, #005691 65%, #007BC0 65%, #007BC0 100%);
         border-radius: 3px;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
     }
     
     .bds-card {
@@ -298,72 +298,8 @@ def load_excel_robust(file_source):
     df.columns = df.columns.astype(str).str.strip()
     return df, target_sheet, header_idx
 
-def parse_bot_feber_response(bot_text):
-    parsed = {
-        'Abstract_Issue': '', 'Abstract_Problem': '', 'Abstract_Lessons': '',
-        'Product_Process': '', 'Component': '', 'Sub_Component': '',
-        'Problem': '', 'Lessons_Rows': [],
-        'What_Else': '', 'Where': '', 'When': '', 'Who': ''
-    }
-    m_abs = re.search(r'(?:0\.\s*Abstract|Abstract)\s*([\s\S]*?)(?=1\.\s*Product|$)', bot_text, re.I)
-    if m_abs:
-        t = m_abs.group(1)
-        i_m = re.search(r'Issue:\s*([\s\S]*?)(?=Problem:|$)', t, re.I)
-        p_m = re.search(r'Problem:\s*([\s\S]*?)(?=Lessons:|$)', t, re.I)
-        l_m = re.search(r'Lessons:\s*([\s\S]*?)(?=Tags:|Picture|1\.\s*Product|$)', t, re.I)
-        if i_m: parsed['Abstract_Issue'] = i_m.group(1).strip()
-        if p_m: parsed['Abstract_Problem'] = p_m.group(1).strip()
-        if l_m: parsed['Abstract_Lessons'] = l_m.group(1).strip()
-    
-    m_p = re.search(r'1\.\s*Product\s*/\s*Process\s*([\s\S]*?)(?=2\.\s*Problem|$)', bot_text, re.I)
-    if m_p:
-        t = m_p.group(1)
-        pp = re.search(r'Product\s*/\s*Process:\s*([^\n]+)', t, re.I)
-        cp = re.search(r'Component:\s*([^\n]+)', t, re.I)
-        sc = re.search(r'Sub-Component:\s*([^\n]+)', t, re.I)
-        if pp: parsed['Product_Process'] = pp.group(1).strip()
-        if cp: parsed['Component'] = cp.group(1).strip()
-        if sc: parsed['Sub_Component'] = sc.group(1).strip()
-        
-    m_prob = re.search(r'2\.\s*Problem[^\n]*\n([\s\S]*?)(?=3\.\s*Lessons|$)', bot_text, re.I)
-    if m_prob:
-        parsed['Problem'] = m_prob.group(1).strip()
-    
-    m_less = re.search(r'3\.\s*Lessons[^\n]*\n([\s\S]*?)(?=4\.\s*Potentially|$)', bot_text, re.I)
-    if m_less:
-        less_text = m_less.group(1).strip()
-        raw_lines = [l.strip() for l in less_text.split('\n') if l.strip()]
-        for line in raw_lines:
-            if "measures & sustainable solutions" in line.lower() or "---" in line or line.startswith("| :---") or line.startswith("Lessons\t"):
-                continue
-            if '\t' in line:
-                parts = [p.strip() for p in line.split('\t')]
-                if len(parts) >= 3: parsed['Lessons_Rows'].append((parts[0], parts[1], parts[2]))
-                elif len(parts) == 2: parsed['Lessons_Rows'].append((parts[0], parts[1], ""))
-                elif len(parts) == 1: parsed['Lessons_Rows'].append((parts[0], "", ""))
-            elif '|' in line:
-                parts = [p.strip() for p in line.split('|')[1:-1]]
-                if len(parts) >= 3: parsed['Lessons_Rows'].append((parts[0], parts[1], parts[2]))
-                elif len(parts) == 2: parsed['Lessons_Rows'].append((parts[0], parts[1], ""))
-        if not parsed['Lessons_Rows']:
-            parsed['Lessons_Rows'].append((less_text, "", ""))
-            
-    m_pot = re.search(r'4\.\s*Potentially affected[^\n]*\n([\s\S]*?)(?=5\.\s*Appendix|$)', bot_text, re.I)
-    if m_pot:
-        t = m_pot.group(1)
-        w1 = re.search(r'What else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
-        w2 = re.search(r'Where can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
-        w3 = re.search(r'When can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
-        w4 = re.search(r'Who else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
-        if w1: parsed['What_Else'] = w1.group(1).strip()
-        if w2: parsed['Where'] = w2.group(1).strip()
-        if w3: parsed['When'] = w3.group(1).strip()
-        if w4: parsed['Who'] = w4.group(1).strip()
-        
-    return parsed
-
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (彻底攻克图片置入与格式)
+# 5. 精准装配 Word 模板并置入紧凑图片
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -522,8 +458,10 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
 
     return doc
 
+# -----------------------------------------------------------------------------
+# 6. 双附件生成
+# -----------------------------------------------------------------------------
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
-    """【双附件 Outlook 邮件生成引擎 (EML 格式)】"""
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -579,45 +517,39 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     return msg.as_bytes()
 
 # -----------------------------------------------------------------------------
-# 6. 系统导航与主流程
+# 7. 主交互渲染流程 (自适应变量定义与状态绑定)
 # -----------------------------------------------------------------------------
-
-if excel_file is not None:
+if excel_file is not None and template_file is not None:
     try:
+        # A. 预读取与业务前提解析 (严格解析 Need='Y' & Complete or not 为 Completed/Pending)
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
+        # 提取关键字段
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
         
-        # 核心业务前提 1：只有 LL Need or not == 'Y' 的记录才被录入系统
+        # 1. 第一前提：强制过滤只保留 LL Need or not == Y
         if need_col:
             df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
             
-        # =========================================================================
-        # 【核心修复】：绝对强匹配识别 "Complete or not" 列
-        # =========================================================================
+        # 2. 第二前提：强匹配与清洗判断 Complete or not 状态 (Y=Completed, N=Pending)
         complete_col = None
         for col in df.columns:
             col_str = str(col).strip()
-            # 1. 强力完全匹配，排除其他相似列干扰
             if col_str == 'Complete or not' or col_str.replace('\n', ' ') == 'Complete or not':
                 complete_col = col
                 break
-                
-        # 2. 兜底宽松规则
         if not complete_col:
             for col in df.columns:
                 c_low = str(col).lower().replace(' ', '').replace('_', '')
                 if 'completeornot' in c_low or 'complete' in c_low:
                     complete_col = col
                     break
-
-        # 精准翻译 Y/N 为 Completed/Pending
+                    
         def parse_completion_strict(val):
-            if pd.isna(val):
-                return 'Pending'
+            if pd.isna(val): return 'Pending'
             v_clean = str(val).strip().upper()
             if v_clean.startswith('Y') or v_clean == 'YES' or v_clean == 'TRUE' or v_clean == '1' or '100' in v_clean:
                 return 'Completed'
@@ -629,9 +561,10 @@ if excel_file is not None:
             df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
-        # 模式一：FEBER 模板生成与邮件协同
+        # 模式一：FEBER 报告生成与邮件协同
         # =========================================================================
         if app_mode == "📑 模式一：FEBER 报告生成与邮件协同":
+            # 读取反馈表 Excel 二进制
             feedback_bytes = None
             feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
             if feedback_file is not None and os.path.exists(feedback_file):
@@ -664,6 +597,7 @@ if excel_file is not None:
                         raw_facts_list.append(f"{col_name}: {val_str}")
             raw_facts_block = "\n".join(raw_facts_list)
             
+            # 1:1 还原包含 3 列表格原型的标准 FEBER Prompt
             prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
 You are an honest engineer; you provide always links to the sources and name the original slide/page number.
 Please stick to the facts. In case you have additional topics, supporting or additional useful information be creative, add them and highlight them in italic.
@@ -797,7 +731,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             </div>
             """, unsafe_allow_html=True)
 
-            # 1. 核心 KPI 动态指标栏
+            # 1. KPI 统计卡片
             total_cases = len(df)
             completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
             pending_cases = total_cases - completed_cases
@@ -835,7 +769,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 2. 交互式过滤器与检索栏
+            # 2. 交互式多维过滤器
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             with f_col1:
                 status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"])
@@ -870,10 +804,10 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 3. 双屏联动分面矩阵视图 (左侧纯点击表格 + 右侧焦点检视)
+            # 3. 双屏联动分面矩阵视图 (左侧表格行点击，右侧实时图文)
             col_list_view, col_detail_view = st.columns([1.5, 1.5])
             
-            # 准备左侧精简展示数据
+            # 整理渲染数据
             view_df['闭环状态'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已完成' if x == 'Completed' else '🔴 进行中')
             
             table_disp_cols = [
@@ -889,7 +823,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with col_list_view:
                 st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条 · 点击任意行立即检视)")
                 
-                # 表格行点击选中
+                # 原生点击交互表格（无任何多余下拉框）
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -913,7 +847,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     # 抓取当前选中案例的图片
                     _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row_data.name)
                     
-                    status_badge = '<span style="background:#E8F5E9; color:#2E7D32; padding:3px 12px; border-radius:12px; font-weight:700; font-size:0.85rem;">🟢 已闭环结束 (Complete = Y)</span>' if focus_status == 'Completed' else '<span style="background:#FFEBEE; color:#C62828; padding:3px 12px; border-radius:12px; font-weight:700; font-size:0.85rem;">🔴 待闭环处理 (Complete = N)</span>'
+                    status_badge = '<span class="badge-completed">🟢 已闭环结束 (Complete = Y)</span>' if focus_status == 'Completed' else '<span class="badge-pending">🔴 待闭环处理 (Complete = N)</span>'
                     
                     st.markdown(f"""
                     <div class="inspector-panel">
@@ -929,7 +863,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     """, unsafe_allow_html=True)
                     
                     st.write("")
-                    # 图片专用检视区 (BDS 2.0 优化)
+                    # 图片专用检视区 (BDS 2.0 优化，修复 use_container_width)
                     if case_img:
                         st.markdown("🖼️ **实物不良图片 (Defect Picture):**")
                         st.image(case_img, use_container_width=True)
