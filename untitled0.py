@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Quality Studio & Executive Intelligence Dashboard
+BOSCH | PCB Quality Studio & Executive Intelligence Dashboard (Strict Column Match Edition)
+- Strict Exact Match for 'Complete or not' with Column-Name Diagnostic Print
 - Direct Row-Click Interaction (No Dropdowns: Click table row to inspect)
-- Accurate 'Complete or not' (Y/N) Field Recognition & Status Tagging
 - Mode 1: Automated FEBER Word Report & Dual-Attachment Outlook Draft
 - Mode 2: Executive Split Matrix View (Clickable List + Real-time Image Inspector)
 =============================================================================
@@ -108,6 +108,25 @@ BOSCH_UI_STYLE = """
         margin-bottom: 10px;
     }
     
+    .badge-completed {
+        background-color: #E8F5E9;
+        color: #2E7D32;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: inline-block;
+    }
+    .badge-pending {
+        background-color: #FFEBEE;
+        color: #C62828;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: inline-block;
+    }
+    
     .stButton>button {
         background-color: var(--bosch-blue) !important;
         color: white !important;
@@ -187,7 +206,7 @@ template_file = template_path if os.path.exists(template_path) else None
 feedback_file = feedback_path if os.path.exists(feedback_path) else None
 
 # -----------------------------------------------------------------------------
-# 3. 核心工具函数集合
+# 3. 辅助数据处理函数
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
@@ -504,6 +523,7 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     return doc
 
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
+    """【双附件 Outlook 邮件生成引擎 (EML 格式)】"""
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -559,22 +579,14 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     return msg.as_bytes()
 
 # -----------------------------------------------------------------------------
-# 6. 系统导航：双模式交互架构
+# 6. 系统导航与主流程
 # -----------------------------------------------------------------------------
-app_mode = st.radio(
-    "👉 请选择工作模式 (Work Mode):",
-    options=["📑 模式一：FEBER 报告生成与邮件协同", "📊 模式二：高阶质量全景与闭环看板 (Executive Dashboard)"],
-    horizontal=True
-)
-
-st.write("---")
 
 if excel_file is not None:
     try:
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
-        # 寻找关键列
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
@@ -583,14 +595,26 @@ if excel_file is not None:
         if need_col:
             df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
             
-        # 核心业务前提 2：精准识别 Complete or not 列并解析 Y/N
+        # =========================================================================
+        # 【核心修复】：绝对强匹配识别 "Complete or not" 列
+        # =========================================================================
         complete_col = None
         for col in df.columns:
-            clean_name = re.sub(r'[\s_]+', '', str(col).lower())
-            if 'completeornot' in clean_name or 'complete' in clean_name:
+            col_str = str(col).strip()
+            # 1. 强力完全匹配，排除其他相似列干扰
+            if col_str == 'Complete or not' or col_str.replace('\n', ' ') == 'Complete or not':
                 complete_col = col
                 break
                 
+        # 2. 兜底宽松规则
+        if not complete_col:
+            for col in df.columns:
+                c_low = str(col).lower().replace(' ', '').replace('_', '')
+                if 'completeornot' in c_low or 'complete' in c_low:
+                    complete_col = col
+                    break
+
+        # 精准翻译 Y/N 为 Completed/Pending
         def parse_completion_strict(val):
             if pd.isna(val):
                 return 'Pending'
@@ -763,13 +787,13 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板（支持表格行直接点击联动，彻底抛弃下拉框）
+        # 模式二：高阶质量全景与闭环看板
         # =========================================================================
         else:
             st.markdown("""
             <div style="margin-bottom: 16px;">
                 <h3 style="color:#005691; margin:0; font-weight:700;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
-                <p style="color:#525F6B; font-size:0.9rem; margin-top:2px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 鼠标直选行查看图文全貌</p>
+                <p style="color:#525F6B; font-size:0.9rem; margin-top:4px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 鼠标直选行查看图文全貌</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -860,13 +884,12 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             ]
             valid_table_cols = [c for c in table_disp_cols if c and c in view_df.columns]
             
-            # 记录选中的行
             selected_row_data = None
             
             with col_list_view:
                 st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条 · 点击任意行立即检视)")
                 
-                # 原生点击交互表格（无任何多余下拉框）
+                # 表格行点击选中
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -876,12 +899,10 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     selection_mode="single-row"
                 )
                 
-                # 获取用户鼠标点击选中的行号
                 if event and "rows" in event.selection and len(event.selection["rows"]) > 0:
                     clicked_idx = event.selection["rows"][0]
                     selected_row_data = view_df.iloc[clicked_idx]
                 elif len(view_df) > 0:
-                    # 默认选中第一行展示
                     selected_row_data = view_df.iloc[0]
 
             with col_detail_view:
@@ -908,7 +929,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     """, unsafe_allow_html=True)
                     
                     st.write("")
-                    # 图片专用检视区
+                    # 图片专用检视区 (BDS 2.0 优化)
                     if case_img:
                         st.markdown("🖼️ **实物不良图片 (Defect Picture):**")
                         st.image(case_img, use_container_width=True)
