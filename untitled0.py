@@ -60,7 +60,6 @@ BOSCH_UI_STYLE = """
     }
     .stApp { background-color: var(--bosch-bg); font-family: 'Arial', sans-serif; }
     
-    /* 顶部彩条 */
     .bosch-top-bar {
         height: 6px;
         background: linear-gradient(90deg, #E20015 0%, #E20015 25%, #005691 25%, #005691 65%, #007BC0 65%, #007BC0 100%);
@@ -68,7 +67,6 @@ BOSCH_UI_STYLE = """
         margin-bottom: 16px;
     }
     
-    /* 基础卡片样式 */
     .bds-card {
         background: var(--bosch-card);
         border: 1px solid var(--bosch-border);
@@ -78,7 +76,6 @@ BOSCH_UI_STYLE = """
         box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
     }
     
-    /* KPI 仪表卡片 */
     .kpi-card {
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
@@ -90,7 +87,6 @@ BOSCH_UI_STYLE = """
     .kpi-title { font-size: 0.85rem; color: #525F6B; font-weight: 600; text-transform: uppercase; }
     .kpi-value { font-size: 1.9rem; color: #005691; font-weight: 700; margin-top: 4px; }
     
-    /* 案例画廊卡片 */
     .case-card {
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
@@ -104,7 +100,6 @@ BOSCH_UI_STYLE = """
         box-shadow: 0 6px 18px rgba(0, 86, 145, 0.08);
     }
     
-    /* 状态徽章 */
     .badge-completed {
         background-color: #E8F5E9;
         color: #2E7D32;
@@ -124,7 +119,6 @@ BOSCH_UI_STYLE = """
         display: inline-block;
     }
     
-    /* 步骤胶囊标签 */
     .bds-step-badge {
         display: inline-block;
         background: var(--bosch-blue);
@@ -136,7 +130,6 @@ BOSCH_UI_STYLE = """
         margin-bottom: 10px;
     }
     
-    /* 按钮定制 */
     .stButton>button {
         background-color: var(--bosch-blue) !important;
         color: white !important;
@@ -612,15 +605,6 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
 # -----------------------------------------------------------------------------
 # 6. 系统导航：双模式交互架构
 # -----------------------------------------------------------------------------
-st.markdown("""
-<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-    <div>
-        <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
-        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量标准自动化 · 智能看板图文全景分析 · 邮件双附件一键闭环</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
 app_mode = st.radio(
     "👉 请选择工作模式 (Work Mode):",
     options=["📑 模式一：FEBER 报告生成与邮件协同", "📊 模式二：高阶质量全景与闭环看板 (Executive Dashboard)"],
@@ -634,11 +618,9 @@ if excel_file is not None:
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
-        # 寻找序列号列与完成度相关列
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         
-        # 智能匹配 Complete or not / Complete rate 列
         complete_col = None
         for col in df.columns:
             c_low = str(col).lower()
@@ -649,7 +631,6 @@ if excel_file is not None:
             complete_col = 'Complete Status'
             df[complete_col] = 'Open'
             
-        # 规范化完成状态为：'Completed' 与 'Pending'
         def get_clean_status(val):
             s = str(val).strip().lower()
             if s in ['y', 'yes', 'completed', 'complete', 'closed', 'done', '100%', '100', '1', 'true']:
@@ -659,17 +640,15 @@ if excel_file is not None:
         df['Normalized_Status'] = df[complete_col].apply(get_clean_status)
 
         # =========================================================================
-        # 模式一：FEBER 模板生成与邮件协同 (既有功能)
+        # 模式一：FEBER 模板生成与邮件协同
         # =========================================================================
         if app_mode == "📑 模式一：FEBER 报告生成与邮件协同":
-            # 读取反馈表 Excel 二进制数据
             feedback_bytes = None
             feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
             if feedback_file is not None and os.path.exists(feedback_file):
                 with open(feedback_file, 'rb') as f:
                     feedback_bytes = f.read()
                     
-            # 过滤 LL Need or not == Y
             ll_need_col = next((c for c in df.columns if 'need or not' in str(c).lower()), None)
             gen_df = df.copy()
             if ll_need_col:
@@ -692,7 +671,6 @@ if excel_file is not None:
             selected_row = gen_df.loc[selected_record_idx]
             ok_img, ng_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row.name)
             
-            # 动态生成纯净的事实清单
             raw_facts_list = []
             for col_name in df.columns:
                 if col_name not in ['选择 (Select)', 'Normalized_Status']:
@@ -824,7 +802,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板 (Executive Quality Intelligence Dashboard)
+        # 模式二：高阶质量全景与闭环看板 (已修复混合类型排序报错)
         # =========================================================================
         else:
             st.markdown("""
@@ -834,7 +812,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             </div>
             """, unsafe_allow_html=True)
 
-            # 1. 顶部全域多维交互过滤器
+            # 1. 顶部交互过滤器（彻底消除 int/str 比较报错）
             st.markdown('<div class="bds-card" style="padding:15px;">', unsafe_allow_html=True)
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             
@@ -842,11 +820,19 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 status_filter = st.selectbox("📌 闭环状态过滤:", options=["全部 (All)", "已完成 (Completed)", "未完成 (Pending)"])
             with f_col2:
                 sup_col_name = next((c for c in df.columns if 'supplier' in str(c).lower()), None)
-                all_sups = ["全部 (All)"] + sorted(list(df[sup_col_name].dropna().unique())) if sup_col_name else ["全部 (All)"]
+                if sup_col_name:
+                    unique_sups = [str(x) for x in df[sup_col_name].dropna().unique() if str(x).strip() != '']
+                    all_sups = ["全部 (All)"] + sorted(unique_sups)
+                else:
+                    all_sups = ["全部 (All)"]
                 chosen_sup_filter = st.selectbox("👥 供应商筛选:", options=all_sups)
             with f_col3:
                 proj_col_name = next((c for c in df.columns if 'project' in str(c).lower() or 'part' in str(c).lower()), None)
-                all_projs = ["全部 (All)"] + sorted(list(df[proj_col_name].dropna().unique())) if proj_col_name else ["全部 (All)"]
+                if proj_col_name:
+                    unique_projs = [str(x) for x in df[proj_col_name].dropna().unique() if str(x).strip() != '']
+                    all_projs = ["全部 (All)"] + sorted(unique_projs)
+                else:
+                    all_projs = ["全部 (All)"]
                 chosen_proj_filter = st.selectbox("🚗 零件/项目筛选:", options=all_projs)
             with f_col4:
                 search_text = st.text_input("🔍 全文检索 (序列号/失效模式/根本原因):", placeholder="输入任意关键字...")
@@ -861,10 +847,10 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 filtered_dash_df = filtered_dash_df[filtered_dash_df['Normalized_Status'] == 'Pending']
                 
             if chosen_sup_filter != "全部 (All)" and sup_col_name:
-                filtered_dash_df = filtered_dash_df[filtered_dash_df[sup_col_name] == chosen_sup_filter]
+                filtered_dash_df = filtered_dash_df[filtered_dash_df[sup_col_name].astype(str) == chosen_sup_filter]
                 
             if chosen_proj_filter != "全部 (All)" and proj_col_name:
-                filtered_dash_df = filtered_dash_df[filtered_dash_df[proj_col_name] == chosen_proj_filter]
+                filtered_dash_df = filtered_dash_df[filtered_dash_df[proj_col_name].astype(str) == chosen_proj_filter]
                 
             if search_text:
                 filtered_dash_df = filtered_dash_df[filtered_dash_df.astype(str).apply(lambda r: r.str.contains(search_text, case=False).any(), axis=1)]
@@ -907,13 +893,12 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 3. 交互式可视化图表区 (Plotly 渲染)
+            # 3. 交互式可视化图表区
             if HAS_PLOTLY and len(filtered_dash_df) > 0:
                 c_chart1, c_chart2 = st.columns([1, 2])
                 with c_chart1:
                     st.markdown('<div class="bds-card">', unsafe_allow_html=True)
                     st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📊 闭环达成率分布</h5>", unsafe_allow_html=True)
-                    # 环形图
                     status_counts = filtered_dash_df['Normalized_Status'].value_counts().reset_index()
                     status_counts.columns = ['Status', 'Count']
                     fig_donut = px.pie(
@@ -938,7 +923,9 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     st.markdown('<div class="bds-card">', unsafe_allow_html=True)
                     st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📈 供应商缺陷与闭环分布</h5>", unsafe_allow_html=True)
                     if sup_col_name:
-                        sup_summary = filtered_dash_df.groupby([sup_col_name, 'Normalized_Status']).size().reset_index(name='Count')
+                        chart_df = filtered_dash_df.copy()
+                        chart_df[sup_col_name] = chart_df[sup_col_name].astype(str)
+                        sup_summary = chart_df.groupby([sup_col_name, 'Normalized_Status']).size().reset_index(name='Count')
                         fig_bar = px.bar(
                             sup_summary, 
                             x=sup_col_name, 
@@ -952,7 +939,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         st.plotly_chart(fig_bar, use_container_width=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
-            # 4. 图文并茂的案例详情画廊 (Interactive Visual Case Gallery)
+            # 4. 图文并茂的案例详情画廊
             st.markdown(f"#### 🔎 案例图文全景画廊 (共筛选出 {len(filtered_dash_df)} 条记录)")
             
             if len(filtered_dash_df) == 0:
@@ -966,7 +953,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     ll_point_val = row.get('LL point', row.get('Corrective Action', '未录入建议'))
                     status_val = row.get('Normalized_Status', 'Pending')
                     
-                    # 抓取当前行图片
                     _, card_ng_img = get_images_for_row(excel_file, sheet_name, header_idx, row.name)
                     
                     st.markdown(f"""
@@ -984,7 +970,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # 卡片内部左右分栏：左侧文字全要素，右侧精准展示 Picture
                     card_left, card_right = st.columns([3, 1])
                     with card_left:
                         st.markdown(f"**📝 失效描述 (Description):**\n{desc_val}")
