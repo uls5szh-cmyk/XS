@@ -350,7 +350,7 @@ def parse_bot_feber_response(bot_text):
     if m_prob:
         parsed['Problem'] = m_prob.group(1).strip()
     
-    # 3. Lessons (支持制表符 \t 与 Markdown | 双模式)
+    # 3. Lessons
     m_less = re.search(r'3\.\s*Lessons[^\n]*\n([\s\S]*?)(?=4\.\s*Potentially|$)', bot_text, re.I)
     if m_less:
         less_text = m_less.group(1).strip()
@@ -802,7 +802,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板 (已修复混合类型排序报错)
+        # 模式二：高阶质量全景与闭环看板
         # =========================================================================
         else:
             st.markdown("""
@@ -812,7 +812,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             </div>
             """, unsafe_allow_html=True)
 
-            # 1. 顶部交互过滤器（彻底消除 int/str 比较报错）
+            # 1. 顶部交互过滤器
             st.markdown('<div class="bds-card" style="padding:15px;">', unsafe_allow_html=True)
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             
@@ -939,7 +939,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         st.plotly_chart(fig_bar, use_container_width=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
-            # 4. 图文并茂的案例详情画廊
+            # 4. 图文并茂的案例详情画廊 (已修复 use_container_width)
             st.markdown(f"#### 🔎 案例图文全景画廊 (共筛选出 {len(filtered_dash_df)} 条记录)")
             
             if len(filtered_dash_df) == 0:
@@ -978,7 +978,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         
                     with card_right:
                         if card_ng_img:
-                            st.image(card_ng_img, caption="不良图片 (Defect Picture)", use_column_width=True)
+                            st.image(card_ng_img, caption="不良图片 (Defect Picture)", use_container_width=True)
                         else:
                             st.markdown("""
                             <div style="height:120px; background:#F8FAFC; border:1px dashed #D0DCE5; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
