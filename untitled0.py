@@ -2,9 +2,10 @@
 """
 =============================================================================
 BOSCH | PCB Quality Studio & Executive Intelligence Dashboard
+- Direct Row-Click Interaction (No Dropdowns: Click table row to inspect)
+- Accurate 'Complete or not' (Y/N) Field Recognition & Status Tagging
 - Mode 1: Automated FEBER Word Report & Dual-Attachment Outlook Draft
-- Mode 2: Executive Split Matrix View (Compact Table + Linked Focus Inspector)
-- Strict Rules: 'LL Need or not == Y' pre-filter, 'Complete or not (Y/N)' parsing
+- Mode 2: Executive Split Matrix View (Clickable List + Real-time Image Inspector)
 =============================================================================
 """
 
@@ -577,25 +578,29 @@ if excel_file is not None:
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
-        complete_col = next((c for c in df.columns if 'complete or not' in str(c).lower() or 'complete' in str(c).lower() or 'closure' in str(c).lower()), None)
         
         # 核心业务前提 1：只有 LL Need or not == 'Y' 的记录才被录入系统
         if need_col:
-            orig_total = len(df)
             df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
-            valid_total = len(df)
-        else:
-            valid_total = len(df)
             
-        # 核心业务前提 2：Complete or not 的 Y 与 N 判定
-        def parse_completion(val):
+        # 核心业务前提 2：精准识别 Complete or not 列并解析 Y/N
+        complete_col = None
+        for col in df.columns:
+            clean_name = re.sub(r'[\s_]+', '', str(col).lower())
+            if 'completeornot' in clean_name or 'complete' in clean_name:
+                complete_col = col
+                break
+                
+        def parse_completion_strict(val):
+            if pd.isna(val):
+                return 'Pending'
             v_clean = str(val).strip().upper()
-            if v_clean == 'Y' or v_clean == 'YES' or v_clean == 'TRUE' or v_clean == '1':
+            if v_clean.startswith('Y') or v_clean == 'YES' or v_clean == 'TRUE' or v_clean == '1' or '100' in v_clean:
                 return 'Completed'
             return 'Pending'
             
         if complete_col:
-            df['Normalized_Status'] = df[complete_col].apply(parse_completion)
+            df['Normalized_Status'] = df[complete_col].apply(parse_completion_strict)
         else:
             df['Normalized_Status'] = 'Pending'
 
@@ -758,13 +763,13 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板（分面矩阵视图：左侧清单 + 右侧联动检视）
+        # 模式二：高阶质量全景与闭环看板（支持表格行直接点击联动，彻底抛弃下拉框）
         # =========================================================================
         else:
             st.markdown("""
             <div style="margin-bottom: 16px;">
                 <h3 style="color:#005691; margin:0; font-weight:700;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
-                <p style="color:#525F6B; font-size:0.9rem; margin-top:2px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 实时追踪供应商与产线闭环状态</p>
+                <p style="color:#525F6B; font-size:0.9rem; margin-top:2px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 鼠标直选行查看图文全貌</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -841,59 +846,64 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 3. 双屏联动分面矩阵视图 (左侧轻盈列表 + 右侧聚焦检视面板)
-            col_list_view, col_detail_view = st.columns([1.6, 1.4])
+            # 3. 双屏联动分面矩阵视图 (左侧纯点击表格 + 右侧焦点检视)
+            col_list_view, col_detail_view = st.columns([1.5, 1.5])
+            
+            # 准备左侧精简展示数据
+            view_df['闭环状态'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已完成' if x == 'Completed' else '🔴 进行中')
+            
+            table_disp_cols = [
+                serial_no_col, 
+                '闭环状态',
+                'Project/Part name' if 'Project/Part name' in view_df.columns else proj_col_name,
+                'Failure Mode' if 'Failure Mode' in view_df.columns else 'LL Brief Description'
+            ]
+            valid_table_cols = [c for c in table_disp_cols if c and c in view_df.columns]
+            
+            # 记录选中的行
+            selected_row_data = None
             
             with col_list_view:
-                st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条)")
+                st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条 · 点击任意行立即检视)")
                 
-                # 构造轻量级列表展示列
-                view_df['状态 (Status)'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已闭环' if x == 'Completed' else '🔴 进行中')
-                
-                table_disp_cols = [
-                    serial_no_col, 
-                    '状态 (Status)',
-                    'Project/Part name' if 'Project/Part name' in view_df.columns else proj_col_name,
-                    'Failure Mode' if 'Failure Mode' in view_df.columns else 'LL Brief Description'
-                ]
-                valid_table_cols = [c for c in table_disp_cols if c and c in view_df.columns]
-                
-                # 交互式单选查看详情
-                selected_case_serial = st.selectbox(
-                    "👉 点击选择需要检视的案例 (选择后右侧自动呈现详情与实物图):",
-                    options=view_df[serial_no_col].tolist() if len(view_df) > 0 else [],
-                    format_func=lambda s: f"[{s}] - {view_df[view_df[serial_no_col]==s]['Project/Part name'].values[0] if 'Project/Part name' in view_df.columns else ''}"
-                )
-                
-                # 以现代化紧凑表格展示列表
-                st.dataframe(
+                # 原生点击交互表格（无任何多余下拉框）
+                event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
-                    height=420,
-                    hide_index=True
+                    height=450,
+                    hide_index=True,
+                    on_select="rerun",
+                    selection_mode="single-row"
                 )
+                
+                # 获取用户鼠标点击选中的行号
+                if event and "rows" in event.selection and len(event.selection["rows"]) > 0:
+                    clicked_idx = event.selection["rows"][0]
+                    selected_row_data = view_df.iloc[clicked_idx]
+                elif len(view_df) > 0:
+                    # 默认选中第一行展示
+                    selected_row_data = view_df.iloc[0]
 
             with col_detail_view:
                 st.markdown("##### 🔬 案例深度图文检视面板 (Focus Inspector)")
-                if selected_case_serial:
-                    focus_row = view_df[view_df[serial_no_col] == selected_case_serial].iloc[0]
-                    focus_status = focus_row.get('Normalized_Status', 'Pending')
+                if selected_row_data is not None:
+                    focus_status = selected_row_data.get('Normalized_Status', 'Pending')
                     
                     # 抓取当前选中案例的图片
-                    _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, focus_row.name)
+                    _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row_data.name)
                     
-                    status_badge = '<span style="background:#E8F5E9; color:#2E7D32; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.8rem;">🟢 已闭环 (Completed)</span>' if focus_status == 'Completed' else '<span style="background:#FFEBEE; color:#C62828; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.8rem;">🔴 待闭环处理 (Pending)</span>'
+                    status_badge = '<span style="background:#E8F5E9; color:#2E7D32; padding:3px 12px; border-radius:12px; font-weight:700; font-size:0.85rem;">🟢 已闭环结束 (Complete = Y)</span>' if focus_status == 'Completed' else '<span style="background:#FFEBEE; color:#C62828; padding:3px 12px; border-radius:12px; font-weight:700; font-size:0.85rem;">🔴 待闭环处理 (Complete = N)</span>'
                     
                     st.markdown(f"""
                     <div class="inspector-panel">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
-                            <span style="font-size:1.15rem; font-weight:700; color:#005691;">📌 {focus_row.get(serial_no_col, '')}</span>
+                            <span style="font-size:1.2rem; font-weight:700; color:#005691;">📌 {selected_row_data.get(serial_no_col, '')}</span>
                             {status_badge}
                         </div>
-                        <div style="margin-bottom:8px;"><strong>🚗 零件 / 项目:</strong> <span style="color:#1C2B39;">{focus_row.get('Project/Part name', 'N/A')}</span></div>
-                        <div style="margin-bottom:8px;"><strong>⚠️ 失效简述 (Description):</strong><br><span style="color:#525F6B;">{focus_row.get('LL Brief Description', focus_row.get('Failure Mode', 'N/A'))}</span></div>
-                        <div style="margin-bottom:8px;"><strong>🔬 根本原因 (Root Cause):</strong><br><span style="color:#525F6B;">{focus_row.get('Root Cause', '未录入')}</span></div>
-                        <div style="margin-bottom:12px;"><strong>💡 学习核心点 (LL point):</strong><br><span style="color:#005691; font-weight:600;">{focus_row.get('LL point', focus_row.get('Corrective Action', '未录入'))}</span></div>
+                        <div style="margin-bottom:8px;"><strong>🚗 零件 / 项目:</strong> <span style="color:#1C2B39;">{selected_row_data.get('Project/Part name', 'N/A')}</span></div>
+                        <div style="margin-bottom:8px;"><strong>⚠️ 失效简述 (Description):</strong><br><span style="color:#525F6B;">{selected_row_data.get('LL Brief Description', selected_row_data.get('Failure Mode', 'N/A'))}</span></div>
+                        <div style="margin-bottom:8px;"><strong>🔬 根本原因 (Root Cause):</strong><br><span style="color:#525F6B;">{selected_row_data.get('Root Cause', '未录入')}</span></div>
+                        <div style="margin-bottom:12px;"><strong>💡 学习核心点 (LL point):</strong><br><span style="color:#005691; font-weight:600;">{selected_row_data.get('LL point', selected_row_data.get('Corrective Action', '未录入'))}</span></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -909,7 +919,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("👈 请在左侧列表中点击选择一条记录以查看详细图文信息。")
+                    st.info("👈 表格中暂无数据。")
                     
     except Exception as e:
         st.error(f"❌ 读取或渲染异常: {e}")
