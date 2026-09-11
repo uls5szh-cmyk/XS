@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Multi-Version & Smart Scanner Edition)
-- Auto-Detects & Adapts to all 'PCB Lesson Learn Master List*.xlsx/xlsm' versions
-- Automatically selects the newest version with manual dropdown switching
-- Dual Attachments: Generated Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
-- 1:1 Mirror Prompt with 3-Column Tables & Clean Output
+BOSCH | PCB Quality Studio & Executive Intelligence Dashboard
+- Mode 1: Automated FEBER Word Report & Dual-Attachment Outlook Draft
+- Mode 2: Executive Quality Intelligence Dashboard (Beyond Power BI)
+- Interactive Defect Gallery, Picture Extraction & Completion Tracking
 =============================================================================
 """
 
@@ -28,11 +27,19 @@ from email.mime.base import MIMEBase
 from email import encoders
 from email.header import Header
 
+# 尝试导入交互式图表库 Plotly
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
+
 # -----------------------------------------------------------------------------
-# 1. 页面基本配置与博世工业视觉体系
+# 1. 页面基本配置与博世高端工业视觉体系 (Bosch Corporate Identity 2.0)
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Bosch | PCB Lesson Learn Quality Studio",
+    page_title="Bosch | PCB Quality Studio & Dashboard",
     layout="wide",
     page_icon="🔴"
 )
@@ -43,25 +50,81 @@ BOSCH_UI_STYLE = """
         --bosch-red: #E20015;
         --bosch-blue: #005691;
         --bosch-light-blue: #007BC0;
+        --bosch-cyan: #008ECF;
+        --bosch-green: #78BE20;
         --bosch-dark-gray: #1C2B39;
         --bosch-gray: #525F6B;
         --bosch-bg: #F4F6F8;
+        --bosch-card: #FFFFFF;
+        --bosch-border: #DDE3EA;
     }
-    .stApp { background-color: var(--bosch-bg); }
+    .stApp { background-color: var(--bosch-bg); font-family: 'Arial', sans-serif; }
+    
+    /* 顶部彩条 */
     .bosch-top-bar {
         height: 6px;
         background: linear-gradient(90deg, #E20015 0%, #E20015 25%, #005691 25%, #005691 65%, #007BC0 65%, #007BC0 100%);
         border-radius: 3px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
+    
+    /* 基础卡片样式 */
     .bds-card {
-        background: #FFFFFF;
-        border: 1px solid #DDE3EA;
+        background: var(--bosch-card);
+        border: 1px solid var(--bosch-border);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
     }
+    
+    /* KPI 仪表卡片 */
+    .kpi-card {
+        background: #FFFFFF;
+        border: 1px solid var(--bosch-border);
+        border-radius: 8px;
+        padding: 16px 20px;
+        border-top: 4px solid var(--bosch-blue);
+        box-shadow: 0 4px 10px rgba(0, 40, 80, 0.03);
+    }
+    .kpi-title { font-size: 0.85rem; color: #525F6B; font-weight: 600; text-transform: uppercase; }
+    .kpi-value { font-size: 1.9rem; color: #005691; font-weight: 700; margin-top: 4px; }
+    
+    /* 案例画廊卡片 */
+    .case-card {
+        background: #FFFFFF;
+        border: 1px solid var(--bosch-border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        transition: all 0.2s ease-in-out;
+    }
+    .case-card:hover {
+        border-color: var(--bosch-light-blue);
+        box-shadow: 0 6px 18px rgba(0, 86, 145, 0.08);
+    }
+    
+    /* 状态徽章 */
+    .badge-completed {
+        background-color: #E8F5E9;
+        color: #2E7D32;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: inline-block;
+    }
+    .badge-pending {
+        background-color: #FFEBEE;
+        color: #C62828;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: inline-block;
+    }
+    
+    /* 步骤胶囊标签 */
     .bds-step-badge {
         display: inline-block;
         background: var(--bosch-blue);
@@ -72,6 +135,8 @@ BOSCH_UI_STYLE = """
         border-radius: 20px;
         margin-bottom: 10px;
     }
+    
+    /* 按钮定制 */
     .stButton>button {
         background-color: var(--bosch-blue) !important;
         color: white !important;
@@ -89,28 +154,18 @@ BOSCH_UI_STYLE = """
 """
 st.markdown(BOSCH_UI_STYLE, unsafe_allow_html=True)
 
-st.markdown("""
-<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-    <div>
-        <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
-        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量报告规范 · 智能适配多版本 Master List (.xlsx / .xlsm) · 邮件草稿一键闭环</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
 # -----------------------------------------------------------------------------
-# 2. 智能多版本文件自动检索机制 (扫描 G 盘与当前应用目录)
+# 2. 跨平台自动扫描与数据源匹配
 # -----------------------------------------------------------------------------
 BASE_G_DIR = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn"
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 TEAMS_BOT_URL = "https://teams.microsoft.com/l/app/ffcadcc0-464f-4110-a065-0e3b4733baa9?source=bot-header-share-entrypoint"
 
 def scan_all_master_lists():
-    """扫描所有符合 PCB Lesson Learn Master List 规则的 .xlsx 和 .xlsm 文件并按修改时间倒序排列"""
+    """扫描所有以 PCB Lesson Learn Master List 开头的 Excel 文件"""
     search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
     found_files = []
     seen = set()
-    
     for s_dir in search_dirs:
         if os.path.exists(s_dir):
             for ext in ["*.xlsx", "*.xlsm"]:
@@ -120,8 +175,6 @@ def scan_all_master_lists():
                     if real_path not in seen and not os.path.basename(real_path).startswith("~$"):
                         seen.add(real_path)
                         found_files.append(real_path)
-                        
-    # 按最后修改时间倒序排序（最新的排在最前）
     found_files.sort(key=lambda x: os.path.getmtime(x) if os.path.exists(x) else 0, reverse=True)
     return found_files
 
@@ -137,15 +190,12 @@ def resolve_exact_file(filename_list):
             return fname
     return None
 
-st.sidebar.markdown("### ⚙️ 数据源路径配置")
+st.sidebar.markdown("### ⚙️ 系统数据源配置")
 
-# 1. 扫描所有可用的 Master List 版本
 available_master_lists = scan_all_master_lists()
-
 if available_master_lists:
-    # 默认选中最新修改的那个版本
     chosen_excel = st.sidebar.selectbox(
-        "📊 检测到 Master List 版本 (自动置顶最新):",
+        "📊 Master List 版本 (已自动定位最新):",
         options=available_master_lists,
         format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%Y-%m-%d %H:%M')})"
     )
@@ -153,7 +203,6 @@ if available_master_lists:
 else:
     excel_path = st.sidebar.text_input("1. Master List 表格路径:", os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx"))
 
-# 2. 匹配 Word 模板
 resolved_template = resolve_exact_file([
     "Lessons Learned Report Problem Solving.docx",
     "Blank LL Template complete version.docx",
@@ -161,41 +210,19 @@ resolved_template = resolve_exact_file([
 ])
 template_path = st.sidebar.text_input("2. Word 模板路径:", resolved_template if resolved_template else os.path.join(BASE_G_DIR, "Lessons Learned Report Problem Solving.docx"))
 
-# 3. 匹配 Feedback 表格
 resolved_feedback = resolve_exact_file(["LL Feedback table_Supplier version_V1.xlsx"])
 feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"))
 
-excel_file = None
-template_file = None
-feedback_file = None
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("##### 📁 文件就绪状态：")
-
-if excel_path and os.path.exists(excel_path):
-    excel_file = excel_path
-    st.sidebar.success(f"✅ Master List: 已就绪\n`{os.path.basename(excel_path)}`")
-else:
-    st.sidebar.error("❌ Master List: 未找到")
-    
-if template_path and os.path.exists(template_path):
-    template_file = template_path
-    st.sidebar.success(f"✅ Word 模板: 已就绪\n`{os.path.basename(template_path)}`")
-else:
-    st.sidebar.error("❌ Word 模板: 未找到")
-    
-if feedback_path and os.path.exists(feedback_path):
-    feedback_file = feedback_path
-    st.sidebar.success(f"✅ Feedback 表: 已就绪\n`{os.path.basename(feedback_path)}`")
-else:
-    st.sidebar.warning("⚠️ Feedback 表: 未找到 (生成时将仅附加 Word 报告)")
+excel_file = excel_path if os.path.exists(excel_path) else None
+template_file = template_path if os.path.exists(template_path) else None
+feedback_file = feedback_path if os.path.exists(feedback_path) else None
 
 # -----------------------------------------------------------------------------
-# 3. 辅助解析函数（全面支持 .xlsx 和带宏的 .xlsm 提取图片及邮箱）
+# 3. 核心工具函数集合
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
-    """从 Vendor code 表中读取供应商与邮箱映射 (支持 xlsx / xlsm)"""
+    """从 Vendor code 表中读取供应商与邮箱映射"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         xl = pd.ExcelFile(file_source)
@@ -227,7 +254,7 @@ def load_supplier_emails(file_source):
     return {}
 
 def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
-    """从 Excel/xlsm 指定行提取 NG 和 OK 图片二进制流"""
+    """从 Excel 指定行提取 NG 和 OK 图片二进制流"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         wb = openpyxl.load_workbook(file_source, data_only=True)
@@ -260,11 +287,10 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
                 
         return ok_img, ng_img
     except Exception as e:
-        print(f"图片提取异常: {e}")
         return None, None
 
 def load_excel_robust(file_source):
-    """加载 Excel/xlsm 并定位表头"""
+    """加载 Excel 并定位表头"""
     if hasattr(file_source, 'seek'): file_source.seek(0)
     xl = pd.ExcelFile(file_source)
     sheet_names = xl.sheet_names
@@ -286,10 +312,6 @@ def load_excel_robust(file_source):
     df = pd.read_excel(file_source, sheet_name=target_sheet, header=header_idx)
     df.columns = df.columns.astype(str).str.strip()
     return df, target_sheet, header_idx
-
-# -----------------------------------------------------------------------------
-# 4. 高鲁棒性 Bot 输出解析器
-# -----------------------------------------------------------------------------
 
 def parse_bot_feber_response(bot_text):
     """解析 Bot 按照 FEBER 规范输出的结构化文本与 3 列表格"""
@@ -375,7 +397,6 @@ def parse_bot_feber_response(bot_text):
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
-    """安全清空单元格并设置为标准 Arial 10.5pt 格式"""
     cell.text = ""
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -385,7 +406,6 @@ def set_cell_formatted_text(cell, text):
     run.font.bold = False
 
 def set_aligned_field_paragraph(p, label, value, indent_inches=1.0):
-    """为 Abstract 区域设置悬挂缩进（Hanging Indent），使冒号后的文字严格垂直对齐"""
     p.text = ""
     p.paragraph_format.left_indent = Inches(indent_inches)
     p.paragraph_format.first_line_indent = Inches(-indent_inches)
@@ -395,16 +415,13 @@ def set_aligned_field_paragraph(p, label, value, indent_inches=1.0):
     r_label.font.name = 'Arial'
     r_label.font.size = Pt(10.5)
     r_label.font.bold = True
-    
     p.add_run("\t")
-    
     r_val = p.add_run(str(value).strip())
     r_val.font.name = 'Arial'
     r_val.font.size = Pt(10.5)
     r_val.font.bold = False
 
 def replace_field_value_in_doc(doc, field_label, new_value, is_abstract=False):
-    """精准查找字段标签并更新值"""
     if not new_value: return
     for p in doc.paragraphs:
         if field_label.lower() in p.text.lower():
@@ -416,7 +433,6 @@ def replace_field_value_in_doc(doc, field_label, new_value, is_abstract=False):
                 r_label.font.name = 'Arial'
                 r_label.font.size = Pt(10.5)
                 r_label.font.bold = True
-                
                 r_val = p.add_run(str(new_value).strip())
                 r_val.font.name = 'Arial'
                 r_val.font.size = Pt(10.5)
@@ -424,7 +440,6 @@ def replace_field_value_in_doc(doc, field_label, new_value, is_abstract=False):
             return
 
 def insert_content_under_heading(doc, heading_kw, text_value):
-    """在指定标题下方安全插入内容段落（确保 2 Problem 100% 写入不遗漏）"""
     if not text_value: return
     for idx, p in enumerate(doc.paragraphs):
         p_txt = p.text.strip().lower()
@@ -440,22 +455,12 @@ def insert_content_under_heading(doc, heading_kw, text_value):
             return
 
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, ng_img=None):
-    """
-    【表格定向精准装配引擎】
-    - 0. Abstract -> 对齐分离回填 Issue / Problem / Lessons
-    - Picture 单元格 -> 识别包含 'picture' / 'defect' / 'not-ok-part' 的单元格并居中置入不良图片
-    - 1. Product/Process -> 分离回填 Product/Process / Component / Sub-Component
-    - 2. Problem -> 精准注入正文段落
-    - 3. Lessons -> 3列表格 (Lessons | Measures & Sustainable Solutions | Root Cause) 逐行动态增行
-    - 4. Potentially affected -> 2列4行表格 (What else / Where / When / Who)
-    """
     if hasattr(template_source, 'seek'):
         template_source.seek(0)
     doc = docx.Document(template_source)
     current_date_str = datetime.date.today().strftime('%b %d %Y')
     failure_mode_str = str(raw_row.get('Failure Mode', '')).strip()
 
-    # 1. 替换页眉页脚老日期与主标题
     for p in doc.paragraphs:
         if 'May 24 2022' in p.text or 'May 24, 2022' in p.text:
             p.text = p.text.replace('May 24 2022', current_date_str).replace('May 24, 2022', current_date_str)
@@ -464,7 +469,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                 p_clean = p.text.strip().rstrip("–-—: ").strip()
                 p.text = f"{p_clean} – {failure_mode_str}"
 
-    # 2. 精准对齐填充 0. Abstract (整齐悬挂缩进)
     abs_issue = bot_data.get('Abstract_Issue') or raw_row.get('LL Brief Description', '')
     abs_prob = bot_data.get('Abstract_Problem') or raw_row.get('Failure Mode', '')
     abs_less = bot_data.get('Abstract_Lessons') or raw_row.get('Should or not to do', '')
@@ -473,7 +477,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     replace_field_value_in_doc(doc, "Problem:", abs_prob, is_abstract=True)
     replace_field_value_in_doc(doc, "Lessons:", abs_less, is_abstract=True)
 
-    # 3. 精准独立填充 1. Product / Process
     pp_val = bot_data.get('Product_Process') or raw_row.get('Related Material Field / Process', '')
     comp_val = bot_data.get('Component') or raw_row.get('Project/Part name', '')
     sub_val = bot_data.get('Sub_Component') or 'Not specified'
@@ -482,16 +485,13 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     replace_field_value_in_doc(doc, "Component:", comp_val)
     replace_field_value_in_doc(doc, "Sub-Component:", sub_val)
 
-    # 4. 填充 2. Problem (Fundamental Problem) -> 采用 addnext 确保 100% 写入
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     insert_content_under_heading(doc, "Problem (Fundamental Problem)", prob_val)
 
-    # 5. 定向精准填充各个表格 (Picture 紧凑置入 / 3. Lessons / 4. Potentially affected)
     picture_inserted = False
     for table in doc.tables:
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
         
-        # A. 扫描所有表格中带有 'picture' / 'defect' / 'not-ok' 的单元格（紧凑嵌入，边距归零）
         for row in table.rows:
             for cell in row.cells:
                 c_txt = cell.text.lower().replace(" ", "")
@@ -515,7 +515,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                         p.paragraph_format.line_spacing = 1.0
                         p.add_run().add_picture(io.BytesIO(ok_img), width=Inches(1.85))
 
-        # B. 锁定 3. Lessons (3列对策表：Lessons | Measures & Sustainable Solutions | Root Cause)
         if "lessons" in t_header and ("measures" in t_header or "root cause" in t_header):
             lessons_rows = bot_data.get('Lessons_Rows', [])
             if not lessons_rows:
@@ -524,17 +523,14 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                     raw_row.get('Corrective Action', ''),
                     raw_row.get('Root Cause', '')
                 )]
-            # 清除旧占位行（只保留表头 Row 0）
             while len(table.rows) > 1:
                 tr = table.rows[-1]._tr
                 table._tbl.remove(tr)
-            # 动态根据条目多行写入 3 个独立单元格
             for row_tuple in lessons_rows:
                 new_row = table.add_row()
                 for c_idx in range(min(3, len(row_tuple))):
                     set_cell_formatted_text(new_row.cells[c_idx], row_tuple[c_idx])
 
-        # C. 锁定 4. Potentially affected (2列 4行评估表格)
         elif "what else" in t_header or "potentially" in t_header or len(table.rows) == 4:
             w_map = {
                 0: bot_data.get('What_Else') or raw_row.get('What else could be additionally affected?') or 'Other PCB suppliers manufacturing multilayer boards using similar pattern plating processes.',
@@ -546,7 +542,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                 if len(row.cells) >= 2 and r_i in w_map:
                     set_cell_formatted_text(row.cells[1], w_map[r_i])
 
-    # 兜底：如果表格里没找到，检查正文段落
     if not picture_inserted and ng_img:
         for p in doc.paragraphs:
             p_txt_clean = p.text.lower().replace(" ", "")
@@ -559,9 +554,7 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     return doc
 
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
-    """
-    【双附件 Outlook 邮件生成引擎 (EML 格式)】
-    """
+    """【双附件 Outlook 邮件生成引擎 (EML 格式)】"""
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -594,14 +587,12 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = 'Sunny.LIU3@cn.bosch.com'
     msg['To'] = to_emails
-    msg.add_header('X-Unsent', '1') # 草稿可编辑模式
+    msg.add_header('X-Unsent', '1')
     
-    # 注入 HTML 正文
     alt_part = MIMEMultipart('alternative')
     alt_part.attach(MIMEText(html_body, 'html', 'utf-8'))
     msg.attach(alt_part)
     
-    # 附件 1：Word 报告
     if doc_bytes:
         part_doc = MIMEBase('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document')
         part_doc.set_payload(doc_bytes)
@@ -609,7 +600,6 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
         part_doc.add_header('Content-Disposition', f'attachment; filename="{doc_filename}"')
         msg.attach(part_doc)
         
-    # 附件 2：供应商反馈评估表 (Excel)
     if feedback_bytes:
         part_fb = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         part_fb.set_payload(feedback_bytes)
@@ -620,64 +610,98 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     return msg.as_bytes()
 
 # -----------------------------------------------------------------------------
-# 6. 主交互流程 (BDS 2.0 工业级卡片流)
+# 6. 系统导航：双模式交互架构
 # -----------------------------------------------------------------------------
+st.markdown("""
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div>
+        <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
+        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量标准自动化 · 智能看板图文全景分析 · 邮件双附件一键闭环</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-if excel_file is not None and template_file is not None:
+app_mode = st.radio(
+    "👉 请选择工作模式 (Work Mode):",
+    options=["📑 模式一：FEBER 报告生成与邮件协同", "📊 模式二：高阶质量全景与闭环看板 (Executive Dashboard)"],
+    horizontal=True
+)
+
+st.write("---")
+
+if excel_file is not None:
     try:
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
-        # 读取反馈表 Excel 二进制数据
-        feedback_bytes = None
-        feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
-        if feedback_file is not None:
-            if isinstance(feedback_file, str) and os.path.exists(feedback_file):
-                with open(feedback_file, 'rb') as f:
-                    feedback_bytes = f.read()
-            elif hasattr(feedback_file, 'read'):
-                feedback_file.seek(0)
-                feedback_bytes = feedback_file.read()
-                
-        # 过滤 LL Need or not == Y
-        ll_need_col = next((c for c in df.columns if 'need or not' in str(c).lower()), 'LL Need or not')
-        if ll_need_col in df.columns:
-            df = df[df[ll_need_col].astype(str).str.strip().str.upper() == 'Y']
-            st.success(f"🎉 成功载入 **{sheet_name}**：已过滤保留 `{ll_need_col} = 'Y'` 的 **{len(df)}** 条有效记录。")
-            
+        # 寻找序列号列与完成度相关列
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         
-        # ==================== STEP 1 ====================
-        st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 1</span> <h4 style="display:inline; margin-left:8px; color:#005691;">选择台账记录并提取事实</h4>', unsafe_allow_html=True)
-        
-        search_kw = st.text_input("🔍 搜索记录 (序列号/供应商/失效模式):", placeholder="输入关键字实时过滤...")
-        filtered_df = df.copy()
-        if search_kw:
-            filtered_df = df[df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
+        # 智能匹配 Complete or not / Complete rate 列
+        complete_col = None
+        for col in df.columns:
+            c_low = str(col).lower()
+            if 'complete' in c_low or 'closure' in c_low or 'status' in c_low or 'tracking' in c_low:
+                complete_col = col
+                break
+        if not complete_col:
+            complete_col = 'Complete Status'
+            df[complete_col] = 'Open'
             
-        selected_record_idx = st.selectbox(
-            "👉 请选择台账记录：",
-            options=filtered_df.index,
-            format_func=lambda x: f"[{filtered_df.loc[x, serial_no_col]}] {filtered_df.loc[x, 'Failure Mode']} - {filtered_df.loc[x, 'Project/Part name']}"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        selected_row = filtered_df.loc[selected_record_idx]
-        ok_img, ng_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row.name)
-        
-        # 动态生成纯净的事实清单
-        raw_facts_list = []
-        for col_name in df.columns:
-            if col_name != '选择 (Select)':
-                val_str = str(selected_row.get(col_name, '')).strip()
-                if val_str and val_str not in ['nan', 'None']:
-                    raw_facts_list.append(f"{col_name}: {val_str}")
-        raw_facts_block = "\n".join(raw_facts_list)
-        
-        # 1:1 还原包含 3 列表格原型的标准 FEBER Prompt
-        prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
+        # 规范化完成状态为：'Completed' 与 'Pending'
+        def get_clean_status(val):
+            s = str(val).strip().lower()
+            if s in ['y', 'yes', 'completed', 'complete', 'closed', 'done', '100%', '100', '1', 'true']:
+                return 'Completed'
+            return 'Pending'
+            
+        df['Normalized_Status'] = df[complete_col].apply(get_clean_status)
+
+        # =========================================================================
+        # 模式一：FEBER 模板生成与邮件协同 (既有功能)
+        # =========================================================================
+        if app_mode == "📑 模式一：FEBER 报告生成与邮件协同":
+            # 读取反馈表 Excel 二进制数据
+            feedback_bytes = None
+            feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
+            if feedback_file is not None and os.path.exists(feedback_file):
+                with open(feedback_file, 'rb') as f:
+                    feedback_bytes = f.read()
+                    
+            # 过滤 LL Need or not == Y
+            ll_need_col = next((c for c in df.columns if 'need or not' in str(c).lower()), None)
+            gen_df = df.copy()
+            if ll_need_col:
+                gen_df = gen_df[gen_df[ll_need_col].astype(str).str.strip().str.upper() == 'Y']
+                
+            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">STEP 1</span> <h4 style="display:inline; margin-left:8px; color:#005691;">选择台账记录并提取事实</h4>', unsafe_allow_html=True)
+            
+            search_kw = st.text_input("🔍 搜索记录 (序列号/供应商/失效模式):", placeholder="输入关键字实时过滤...")
+            if search_kw:
+                gen_df = gen_df[gen_df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
+                
+            selected_record_idx = st.selectbox(
+                "👉 请选择台账记录：",
+                options=gen_df.index,
+                format_func=lambda x: f"[{gen_df.loc[x, serial_no_col]}] {gen_df.loc[x, 'Failure Mode']} - {gen_df.loc[x, 'Project/Part name']}"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            selected_row = gen_df.loc[selected_record_idx]
+            ok_img, ng_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row.name)
+            
+            # 动态生成纯净的事实清单
+            raw_facts_list = []
+            for col_name in df.columns:
+                if col_name not in ['选择 (Select)', 'Normalized_Status']:
+                    val_str = str(selected_row.get(col_name, '')).strip()
+                    if val_str and val_str not in ['nan', 'None']:
+                        raw_facts_list.append(f"{col_name}: {val_str}")
+            raw_facts_block = "\n".join(raw_facts_list)
+            
+            prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
 You are an honest engineer; you provide always links to the sources and name the original slide/page number.
 Please stick to the facts. In case you have additional topics, supporting or additional useful information be creative, add them and highlight them in italic.
 
@@ -728,84 +752,258 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 ==================== [Raw Master List Facts] ====================
 {raw_facts_block}"""
 
-        # ==================== STEP 2 ====================
-        st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 2</span> <h4 style="display:inline; margin-left:8px; color:#005691;">一键复制 Prompt 并在 Teams M-PU Bot 润色</h4>', unsafe_allow_html=True)
-        
-        c_p, c_b = st.columns([3, 1])
-        with c_p:
-            st.text_area("📋 已完整内嵌 3 列表格原型的工程 Prompt (点击右上角图标复制):", prompt_content, height=220)
-        with c_b:
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
-            st.caption("💡 操作提示：复制左侧带有 3 列表格的完整 Prompt，在 Teams 窗口中发送给 Bot。")
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">STEP 2</span> <h4 style="display:inline; margin-left:8px; color:#005691;">一键复制 Prompt 并在 Teams M-PU Bot 润色</h4>', unsafe_allow_html=True)
+            c_p, c_b = st.columns([3, 1])
+            with c_p:
+                st.text_area("📋 已完整内嵌 3 列表格原型的工程 Prompt (点击右上角图标复制):", prompt_content, height=220)
+            with c_b:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
+                st.caption("💡 操作提示：复制左侧带有 3 列表格的完整 Prompt，在 Teams 窗口中发送给 Bot。")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # ==================== STEP 3 ====================
-        st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-        st.markdown('<span class="bds-step-badge">STEP 3</span> <h4 style="display:inline; margin-left:8px; color:#005691;">粘贴 Bot 回复并一键生成最终交付包</h4>', unsafe_allow_html=True)
-        
-        col_in, col_sup = st.columns([3, 2])
-        with col_in:
-            bot_reply = st.text_area(
-                "📥 在此粘贴 M-PU Bot 润色后的完整回复：",
-                height=220,
-                placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons (包含3列表格), 4. Potentially affected 的完整文本..."
-            )
-        with col_sup:
-            selected_sups = st.multiselect("👥 选择收件供应商 (自动读取 Vendor code 邮箱):", options=list(supplier_dict.keys()))
-            to_emails_list = []
-            for s in selected_sups:
-                to_emails_list.extend(supplier_dict[s])
-            to_emails_str = "; ".join(list(set(to_emails_list)))
-            if to_emails_str:
-                st.info(f"📧 **自动收件人:**\n`{to_emails_str}`")
+            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">STEP 3</span> <h4 style="display:inline; margin-left:8px; color:#005691;">粘贴 Bot 回复并一键生成最终交付包</h4>', unsafe_allow_html=True)
+            col_in, col_sup = st.columns([3, 2])
+            with col_in:
+                bot_reply = st.text_area(
+                    "📥 在此粘贴 M-PU Bot 润色后的完整回复：",
+                    height=220,
+                    placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons (包含3列表格), 4. Potentially affected 的完整文本..."
+                )
+            with col_sup:
+                selected_sups = st.multiselect("👥 选择收件供应商 (自动读取 Vendor code 邮箱):", options=list(supplier_dict.keys()))
+                to_emails_list = []
+                for s in selected_sups:
+                    to_emails_list.extend(supplier_dict[s])
+                to_emails_str = "; ".join(list(set(to_emails_list)))
+                if to_emails_str:
+                    st.info(f"📧 **自动收件人:**\n`{to_emails_str}`")
 
-        if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True):
-            if template_file is None:
-                st.error("❌ 未检测到 Word 模板，请确认路径。")
-            else:
-                with st.spinner("正在定向装配表格、紧凑插入不良图片并生成双附件邮件草稿..."):
-                    bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
-                    
-                    # 定向装配 Word 模板
-                    doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_img, ng_img)
-                    bio = io.BytesIO()
-                    doc.save(bio)
-                    doc_bytes = bio.getvalue()
-                    
-                    serial_str = str(selected_row.get(serial_no_col, 'LL-Export'))
-                    doc_filename = f"LL_Template_{serial_str}.docx"
-                    eml_bytes = generate_eml_file_dual_attachment(
-                        selected_row, 
-                        to_emails_str, 
-                        doc_bytes, 
-                        doc_filename, 
-                        feedback_bytes, 
-                        feedback_filename
+            if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True):
+                if template_file is None:
+                    st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
+                else:
+                    with st.spinner("正在定向装配表格、紧凑插入不良图片并生成双附件邮件草稿..."):
+                        bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
+                        doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_img, ng_img)
+                        bio = io.BytesIO()
+                        doc.save(bio)
+                        doc_bytes = bio.getvalue()
+                        
+                        serial_str = str(selected_row.get(serial_no_col, 'LL-Export'))
+                        doc_filename = f"LL_Template_{serial_str}.docx"
+                        eml_bytes = generate_eml_file_dual_attachment(
+                            selected_row, 
+                            to_emails_str, 
+                            doc_bytes, 
+                            doc_filename, 
+                            feedback_bytes, 
+                            feedback_filename
+                        )
+                        
+                        st.success("🎉 生成成功！邮件已包含【Word报告 + Excel反馈表】双附件，图片已紧凑居中嵌入。")
+                        c_d1, c_d2 = st.columns(2)
+                        with c_d1:
+                            st.download_button(
+                                f"📥 下载 Word 报告: {doc_filename}",
+                                doc_bytes,
+                                doc_filename,
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                use_container_width=True
+                            )
+                        with c_d2:
+                            st.download_button(
+                                f"📧 下载 Outlook 草稿 (含双附件): Email_Draft_{serial_str}.eml",
+                                eml_bytes,
+                                f"Email_Draft_{serial_str}.eml",
+                                mime="message/rfc822",
+                                use_container_width=True
+                            )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # =========================================================================
+        # 模式二：高阶质量全景与闭环看板 (Executive Quality Intelligence Dashboard)
+        # =========================================================================
+        else:
+            st.markdown("""
+            <div style="margin-bottom: 20px;">
+                <h3 style="color:#005691; margin:0;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
+                <p style="color:#525F6B; font-size:0.9rem; margin-top:4px;">质量经验全景穿透 · 闭环追踪健康度分析 · 案例图文数字档案</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # 1. 顶部全域多维交互过滤器
+            st.markdown('<div class="bds-card" style="padding:15px;">', unsafe_allow_html=True)
+            f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
+            
+            with f_col1:
+                status_filter = st.selectbox("📌 闭环状态过滤:", options=["全部 (All)", "已完成 (Completed)", "未完成 (Pending)"])
+            with f_col2:
+                sup_col_name = next((c for c in df.columns if 'supplier' in str(c).lower()), None)
+                all_sups = ["全部 (All)"] + sorted(list(df[sup_col_name].dropna().unique())) if sup_col_name else ["全部 (All)"]
+                chosen_sup_filter = st.selectbox("👥 供应商筛选:", options=all_sups)
+            with f_col3:
+                proj_col_name = next((c for c in df.columns if 'project' in str(c).lower() or 'part' in str(c).lower()), None)
+                all_projs = ["全部 (All)"] + sorted(list(df[proj_col_name].dropna().unique())) if proj_col_name else ["全部 (All)"]
+                chosen_proj_filter = st.selectbox("🚗 零件/项目筛选:", options=all_projs)
+            with f_col4:
+                search_text = st.text_input("🔍 全文检索 (序列号/失效模式/根本原因):", placeholder="输入任意关键字...")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # 执行过滤
+            filtered_dash_df = df.copy()
+            if status_filter == "已完成 (Completed)":
+                filtered_dash_df = filtered_dash_df[filtered_dash_df['Normalized_Status'] == 'Completed']
+            elif status_filter == "未完成 (Pending)":
+                filtered_dash_df = filtered_dash_df[filtered_dash_df['Normalized_Status'] == 'Pending']
+                
+            if chosen_sup_filter != "全部 (All)" and sup_col_name:
+                filtered_dash_df = filtered_dash_df[filtered_dash_df[sup_col_name] == chosen_sup_filter]
+                
+            if chosen_proj_filter != "全部 (All)" and proj_col_name:
+                filtered_dash_df = filtered_dash_df[filtered_dash_df[proj_col_name] == chosen_proj_filter]
+                
+            if search_text:
+                filtered_dash_df = filtered_dash_df[filtered_dash_df.astype(str).apply(lambda r: r.str.contains(search_text, case=False).any(), axis=1)]
+
+            # 2. 核心 KPI 动态指标栏
+            total_cases = len(df)
+            completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
+            pending_cases = total_cases - completed_cases
+            closure_rate = (completed_cases / total_cases * 100) if total_cases > 0 else 0
+
+            k1, k2, k3, k4 = st.columns(4)
+            with k1:
+                st.markdown(f"""
+                <div class="kpi-card" style="border-top-color: #005691;">
+                    <div class="kpi-title">📚 总 Lessons Learned 案例</div>
+                    <div class="kpi-value">{total_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with k2:
+                st.markdown(f"""
+                <div class="kpi-card" style="border-top-color: #78BE20;">
+                    <div class="kpi-title">✅ 已完成闭环 (Completed)</div>
+                    <div class="kpi-value" style="color: #2E7D32;">{completed_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with k3:
+                st.markdown(f"""
+                <div class="kpi-card" style="border-top-color: #E20015;">
+                    <div class="kpi-title">⏳ 待处理/进行中 (Pending)</div>
+                    <div class="kpi-value" style="color: #E20015;">{pending_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with k4:
+                st.markdown(f"""
+                <div class="kpi-card" style="border-top-color: #008ECF;">
+                    <div class="kpi-title">🎯 闭环健康度 (Closure Rate)</div>
+                    <div class="kpi-value" style="color: #005691;">{closure_rate:.1f}%</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.write("")
+
+            # 3. 交互式可视化图表区 (Plotly 渲染)
+            if HAS_PLOTLY and len(filtered_dash_df) > 0:
+                c_chart1, c_chart2 = st.columns([1, 2])
+                with c_chart1:
+                    st.markdown('<div class="bds-card">', unsafe_allow_html=True)
+                    st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📊 闭环达成率分布</h5>", unsafe_allow_html=True)
+                    # 环形图
+                    status_counts = filtered_dash_df['Normalized_Status'].value_counts().reset_index()
+                    status_counts.columns = ['Status', 'Count']
+                    fig_donut = px.pie(
+                        status_counts, 
+                        names='Status', 
+                        values='Count',
+                        hole=0.6,
+                        color='Status',
+                        color_discrete_map={'Completed': '#78BE20', 'Pending': '#E20015'}
                     )
-                    
-                    st.success("🎉 生成成功！邮件已包含【Word报告 + Excel反馈表】双附件，图片已紧凑居中嵌入。")
-                    
-                    c_d1, c_d2 = st.columns(2)
-                    with c_d1:
-                        st.download_button(
-                            f"📥 下载 Word 报告: {doc_filename}",
-                            doc_bytes,
-                            doc_filename,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            use_container_width=True
-                        )
-                    with c_d2:
-                        st.download_button(
-                            f"📧 下载 Outlook 草稿 (含双附件): Email_Draft_{serial_str}.eml",
-                            eml_bytes,
-                            f"Email_Draft_{serial_str}.eml",
-                            mime="message/rfc822",
-                            use_container_width=True
-                        )
+                    fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+                    fig_donut.update_layout(
+                        showlegend=False, 
+                        margin=dict(t=10, b=10, l=10, r=10),
+                        height=260,
+                        annotations=[dict(text=f"{closure_rate:.1f}%", x=0.5, y=0.5, font_size=24, font_color="#005691", showarrow=False)]
+                    )
+                    st.plotly_chart(fig_donut, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
+                with c_chart2:
+                    st.markdown('<div class="bds-card">', unsafe_allow_html=True)
+                    st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📈 供应商缺陷与闭环分布</h5>", unsafe_allow_html=True)
+                    if sup_col_name:
+                        sup_summary = filtered_dash_df.groupby([sup_col_name, 'Normalized_Status']).size().reset_index(name='Count')
+                        fig_bar = px.bar(
+                            sup_summary, 
+                            x=sup_col_name, 
+                            y='Count', 
+                            color='Normalized_Status',
+                            barmode='stack',
+                            color_discrete_map={'Completed': '#005691', 'Pending': '#E20015'},
+                            labels={sup_col_name: '供应商 (Supplier)', 'Count': '案例数', 'Normalized_Status': '闭环状态'}
+                        )
+                        fig_bar.update_layout(margin=dict(t=10, b=20, l=20, r=10), height=260, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                        st.plotly_chart(fig_bar, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            # 4. 图文并茂的案例详情画廊 (Interactive Visual Case Gallery)
+            st.markdown(f"#### 🔎 案例图文全景画廊 (共筛选出 {len(filtered_dash_df)} 条记录)")
+            
+            if len(filtered_dash_df) == 0:
+                st.warning("⚠️ 当前过滤条件下未检索到相关案例。")
+            else:
+                for idx, row in filtered_dash_df.iterrows():
+                    serial_val = row.get(serial_no_col, 'N/A')
+                    desc_val = row.get('LL Brief Description', row.get('Failure Mode', 'N/A'))
+                    proj_val = row.get('Project/Part name', 'N/A')
+                    rc_val = row.get('Root Cause', '未录入根本原因')
+                    ll_point_val = row.get('LL point', row.get('Corrective Action', '未录入建议'))
+                    status_val = row.get('Normalized_Status', 'Pending')
+                    
+                    # 抓取当前行图片
+                    _, card_ng_img = get_images_for_row(excel_file, sheet_name, header_idx, row.name)
+                    
+                    st.markdown(f"""
+                    <div class="case-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <div>
+                                <strong style="font-size:1.15rem; color:#005691;">📌 {serial_val}</strong>
+                                <span style="margin-left:12px; color:#525F6B; font-weight:600;">项目/零件: {proj_val}</span>
+                            </div>
+                            <div>
+                                <span class="{ 'badge-completed' if status_val == 'Completed' else 'badge-pending' }">
+                                    {'🟢 已闭环 Completed' if status_val == 'Completed' else '🔴 待处理 Pending'}
+                                </span>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # 卡片内部左右分栏：左侧文字全要素，右侧精准展示 Picture
+                    card_left, card_right = st.columns([3, 1])
+                    with card_left:
+                        st.markdown(f"**📝 失效描述 (Description):**\n{desc_val}")
+                        st.markdown(f"**🔬 根本原因 (Root Cause):**\n{rc_val}")
+                        st.markdown(f"**💡 经验学习核心 (LL Point / Action):**\n{ll_point_val}")
+                        
+                    with card_right:
+                        if card_ng_img:
+                            st.image(card_ng_img, caption="不良图片 (Defect Picture)", use_column_width=True)
+                        else:
+                            st.markdown("""
+                            <div style="height:120px; background:#F8FAFC; border:1px dashed #D0DCE5; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
+                                暂无图片 (No Picture)
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
     except Exception as e:
-        st.error(f"❌ 运行异常: {e}")
+        st.error(f"❌ 读取或渲染异常: {e}")
 else:
-    st.info("ℹ️ 请在侧边栏确认 Master List (Excel) 和 Word 模板的文件路径。")
+    st.info("ℹ️ 请在侧边栏确认 Master List (Excel) 文件的有效路径。")
