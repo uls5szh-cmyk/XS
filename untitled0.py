@@ -3,8 +3,8 @@
 =============================================================================
 BOSCH | PCB Quality Studio & Executive Intelligence Dashboard
 - Mode 1: Automated FEBER Word Report & Dual-Attachment Outlook Draft
-- Mode 2: Executive Quality Intelligence Dashboard (Beyond Power BI)
-- Interactive Defect Gallery, Picture Extraction & Completion Tracking
+- Mode 2: Executive Split Matrix View (Compact Table + Linked Focus Inspector)
+- Strict Rules: 'LL Need or not == Y' pre-filter, 'Complete or not (Y/N)' parsing
 =============================================================================
 """
 
@@ -71,7 +71,7 @@ BOSCH_UI_STYLE = """
         background: var(--bosch-card);
         border: 1px solid var(--bosch-border);
         border-radius: 8px;
-        padding: 20px;
+        padding: 18px;
         margin-bottom: 16px;
         box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
     }
@@ -80,43 +80,20 @@ BOSCH_UI_STYLE = """
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
         border-radius: 8px;
-        padding: 16px 20px;
+        padding: 14px 18px;
         border-top: 4px solid var(--bosch-blue);
         box-shadow: 0 4px 10px rgba(0, 40, 80, 0.03);
     }
-    .kpi-title { font-size: 0.85rem; color: #525F6B; font-weight: 600; text-transform: uppercase; }
-    .kpi-value { font-size: 1.9rem; color: #005691; font-weight: 700; margin-top: 4px; }
+    .kpi-title { font-size: 0.8rem; color: #525F6B; font-weight: 600; text-transform: uppercase; }
+    .kpi-value { font-size: 1.8rem; color: #005691; font-weight: 700; margin-top: 2px; }
     
-    .case-card {
+    .inspector-panel {
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
+        border-left: 4px solid var(--bosch-blue);
         border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        transition: all 0.2s ease-in-out;
-    }
-    .case-card:hover {
-        border-color: var(--bosch-light-blue);
-        box-shadow: 0 6px 18px rgba(0, 86, 145, 0.08);
-    }
-    
-    .badge-completed {
-        background-color: #E8F5E9;
-        color: #2E7D32;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.75rem;
-        display: inline-block;
-    }
-    .badge-pending {
-        background-color: #FFEBEE;
-        color: #C62828;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.75rem;
-        display: inline-block;
+        padding: 20px;
+        box-shadow: 0 4px 14px rgba(0, 40, 80, 0.05);
     }
     
     .bds-step-badge {
@@ -155,7 +132,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in global
 TEAMS_BOT_URL = "https://teams.microsoft.com/l/app/ffcadcc0-464f-4110-a065-0e3b4733baa9?source=bot-header-share-entrypoint"
 
 def scan_all_master_lists():
-    """扫描所有以 PCB Lesson Learn Master List 开头的 Excel 文件"""
     search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
     found_files = []
     seen = set()
@@ -172,7 +148,6 @@ def scan_all_master_lists():
     return found_files
 
 def resolve_exact_file(filename_list):
-    """自适应查找具体单个文件"""
     search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
     for fname in filename_list:
         for s_dir in search_dirs:
@@ -188,7 +163,7 @@ st.sidebar.markdown("### ⚙️ 系统数据源配置")
 available_master_lists = scan_all_master_lists()
 if available_master_lists:
     chosen_excel = st.sidebar.selectbox(
-        "📊 Master List 版本 (已自动定位最新):",
+        "📊 Master List 版本 (自动定位最新):",
         options=available_master_lists,
         format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%Y-%m-%d %H:%M')})"
     )
@@ -215,7 +190,6 @@ feedback_file = feedback_path if os.path.exists(feedback_path) else None
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
-    """从 Vendor code 表中读取供应商与邮箱映射"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         xl = pd.ExcelFile(file_source)
@@ -247,7 +221,6 @@ def load_supplier_emails(file_source):
     return {}
 
 def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
-    """从 Excel 指定行提取 NG 和 OK 图片二进制流"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         wb = openpyxl.load_workbook(file_source, data_only=True)
@@ -283,7 +256,6 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
         return None, None
 
 def load_excel_robust(file_source):
-    """加载 Excel 并定位表头"""
     if hasattr(file_source, 'seek'): file_source.seek(0)
     xl = pd.ExcelFile(file_source)
     sheet_names = xl.sheet_names
@@ -307,23 +279,12 @@ def load_excel_robust(file_source):
     return df, target_sheet, header_idx
 
 def parse_bot_feber_response(bot_text):
-    """解析 Bot 按照 FEBER 规范输出的结构化文本与 3 列表格"""
     parsed = {
-        'Abstract_Issue': '',
-        'Abstract_Problem': '',
-        'Abstract_Lessons': '',
-        'Product_Process': '',
-        'Component': '',
-        'Sub_Component': '',
-        'Problem': '',
-        'Lessons_Rows': [],
-        'What_Else': '',
-        'Where': '',
-        'When': '',
-        'Who': ''
+        'Abstract_Issue': '', 'Abstract_Problem': '', 'Abstract_Lessons': '',
+        'Product_Process': '', 'Component': '', 'Sub_Component': '',
+        'Problem': '', 'Lessons_Rows': [],
+        'What_Else': '', 'Where': '', 'When': '', 'Who': ''
     }
-    
-    # 0. Abstract
     m_abs = re.search(r'(?:0\.\s*Abstract|Abstract)\s*([\s\S]*?)(?=1\.\s*Product|$)', bot_text, re.I)
     if m_abs:
         t = m_abs.group(1)
@@ -334,7 +295,6 @@ def parse_bot_feber_response(bot_text):
         if p_m: parsed['Abstract_Problem'] = p_m.group(1).strip()
         if l_m: parsed['Abstract_Lessons'] = l_m.group(1).strip()
     
-    # 1. Product / Process
     m_p = re.search(r'1\.\s*Product\s*/\s*Process\s*([\s\S]*?)(?=2\.\s*Problem|$)', bot_text, re.I)
     if m_p:
         t = m_p.group(1)
@@ -345,12 +305,10 @@ def parse_bot_feber_response(bot_text):
         if cp: parsed['Component'] = cp.group(1).strip()
         if sc: parsed['Sub_Component'] = sc.group(1).strip()
         
-    # 2. Problem
     m_prob = re.search(r'2\.\s*Problem[^\n]*\n([\s\S]*?)(?=3\.\s*Lessons|$)', bot_text, re.I)
     if m_prob:
         parsed['Problem'] = m_prob.group(1).strip()
     
-    # 3. Lessons
     m_less = re.search(r'3\.\s*Lessons[^\n]*\n([\s\S]*?)(?=4\.\s*Potentially|$)', bot_text, re.I)
     if m_less:
         less_text = m_less.group(1).strip()
@@ -370,7 +328,6 @@ def parse_bot_feber_response(bot_text):
         if not parsed['Lessons_Rows']:
             parsed['Lessons_Rows'].append((less_text, "", ""))
             
-    # 4. Potentially affected
     m_pot = re.search(r'4\.\s*Potentially affected[^\n]*\n([\s\S]*?)(?=5\.\s*Appendix|$)', bot_text, re.I)
     if m_pot:
         t = m_pot.group(1)
@@ -403,7 +360,6 @@ def set_aligned_field_paragraph(p, label, value, indent_inches=1.0):
     p.paragraph_format.left_indent = Inches(indent_inches)
     p.paragraph_format.first_line_indent = Inches(-indent_inches)
     p.paragraph_format.tab_stops.add_tab_stop(Inches(indent_inches), WD_TAB_ALIGNMENT.LEFT)
-    
     r_label = p.add_run(label)
     r_label.font.name = 'Arial'
     r_label.font.size = Pt(10.5)
@@ -547,7 +503,6 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     return doc
 
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
-    """【双附件 Outlook 邮件生成引擎 (EML 格式)】"""
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -618,26 +573,31 @@ if excel_file is not None:
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
+        # 寻找关键列
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
+        need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
+        complete_col = next((c for c in df.columns if 'complete or not' in str(c).lower() or 'complete' in str(c).lower() or 'closure' in str(c).lower()), None)
         
-        complete_col = None
-        for col in df.columns:
-            c_low = str(col).lower()
-            if 'complete' in c_low or 'closure' in c_low or 'status' in c_low or 'tracking' in c_low:
-                complete_col = col
-                break
-        if not complete_col:
-            complete_col = 'Complete Status'
-            df[complete_col] = 'Open'
+        # 核心业务前提 1：只有 LL Need or not == 'Y' 的记录才被录入系统
+        if need_col:
+            orig_total = len(df)
+            df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
+            valid_total = len(df)
+        else:
+            valid_total = len(df)
             
-        def get_clean_status(val):
-            s = str(val).strip().lower()
-            if s in ['y', 'yes', 'completed', 'complete', 'closed', 'done', '100%', '100', '1', 'true']:
+        # 核心业务前提 2：Complete or not 的 Y 与 N 判定
+        def parse_completion(val):
+            v_clean = str(val).strip().upper()
+            if v_clean == 'Y' or v_clean == 'YES' or v_clean == 'TRUE' or v_clean == '1':
                 return 'Completed'
             return 'Pending'
             
-        df['Normalized_Status'] = df[complete_col].apply(get_clean_status)
+        if complete_col:
+            df['Normalized_Status'] = df[complete_col].apply(parse_completion)
+        else:
+            df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
         # 模式一：FEBER 模板生成与邮件协同
@@ -649,11 +609,7 @@ if excel_file is not None:
                 with open(feedback_file, 'rb') as f:
                     feedback_bytes = f.read()
                     
-            ll_need_col = next((c for c in df.columns if 'need or not' in str(c).lower()), None)
             gen_df = df.copy()
-            if ll_need_col:
-                gen_df = gen_df[gen_df[ll_need_col].astype(str).str.strip().str.upper() == 'Y']
-                
             st.markdown('<div class="bds-card">', unsafe_allow_html=True)
             st.markdown('<span class="bds-step-badge">STEP 1</span> <h4 style="display:inline; margin-left:8px; color:#005691;">选择台账记录并提取事实</h4>', unsafe_allow_html=True)
             
@@ -802,60 +758,17 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板
+        # 模式二：高阶质量全景与闭环看板（分面矩阵视图：左侧清单 + 右侧联动检视）
         # =========================================================================
         else:
             st.markdown("""
-            <div style="margin-bottom: 20px;">
-                <h3 style="color:#005691; margin:0;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
-                <p style="color:#525F6B; font-size:0.9rem; margin-top:4px;">质量经验全景穿透 · 闭环追踪健康度分析 · 案例图文数字档案</p>
+            <div style="margin-bottom: 16px;">
+                <h3 style="color:#005691; margin:0; font-weight:700;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
+                <p style="color:#525F6B; font-size:0.9rem; margin-top:2px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 实时追踪供应商与产线闭环状态</p>
             </div>
             """, unsafe_allow_html=True)
 
-            # 1. 顶部交互过滤器
-            st.markdown('<div class="bds-card" style="padding:15px;">', unsafe_allow_html=True)
-            f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
-            
-            with f_col1:
-                status_filter = st.selectbox("📌 闭环状态过滤:", options=["全部 (All)", "已完成 (Completed)", "未完成 (Pending)"])
-            with f_col2:
-                sup_col_name = next((c for c in df.columns if 'supplier' in str(c).lower()), None)
-                if sup_col_name:
-                    unique_sups = [str(x) for x in df[sup_col_name].dropna().unique() if str(x).strip() != '']
-                    all_sups = ["全部 (All)"] + sorted(unique_sups)
-                else:
-                    all_sups = ["全部 (All)"]
-                chosen_sup_filter = st.selectbox("👥 供应商筛选:", options=all_sups)
-            with f_col3:
-                proj_col_name = next((c for c in df.columns if 'project' in str(c).lower() or 'part' in str(c).lower()), None)
-                if proj_col_name:
-                    unique_projs = [str(x) for x in df[proj_col_name].dropna().unique() if str(x).strip() != '']
-                    all_projs = ["全部 (All)"] + sorted(unique_projs)
-                else:
-                    all_projs = ["全部 (All)"]
-                chosen_proj_filter = st.selectbox("🚗 零件/项目筛选:", options=all_projs)
-            with f_col4:
-                search_text = st.text_input("🔍 全文检索 (序列号/失效模式/根本原因):", placeholder="输入任意关键字...")
-                
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            # 执行过滤
-            filtered_dash_df = df.copy()
-            if status_filter == "已完成 (Completed)":
-                filtered_dash_df = filtered_dash_df[filtered_dash_df['Normalized_Status'] == 'Completed']
-            elif status_filter == "未完成 (Pending)":
-                filtered_dash_df = filtered_dash_df[filtered_dash_df['Normalized_Status'] == 'Pending']
-                
-            if chosen_sup_filter != "全部 (All)" and sup_col_name:
-                filtered_dash_df = filtered_dash_df[filtered_dash_df[sup_col_name].astype(str) == chosen_sup_filter]
-                
-            if chosen_proj_filter != "全部 (All)" and proj_col_name:
-                filtered_dash_df = filtered_dash_df[filtered_dash_df[proj_col_name].astype(str) == chosen_proj_filter]
-                
-            if search_text:
-                filtered_dash_df = filtered_dash_df[filtered_dash_df.astype(str).apply(lambda r: r.str.contains(search_text, case=False).any(), axis=1)]
-
-            # 2. 核心 KPI 动态指标栏
+            # 1. 核心 KPI 动态指标栏
             total_cases = len(df)
             completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
             pending_cases = total_cases - completed_cases
@@ -865,128 +778,138 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with k1:
                 st.markdown(f"""
                 <div class="kpi-card" style="border-top-color: #005691;">
-                    <div class="kpi-title">📚 总 Lessons Learned 案例</div>
-                    <div class="kpi-value">{total_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                    <div class="kpi-title">📚 总有效经验库 (Need='Y')</div>
+                    <div class="kpi-value">{total_cases} <span style="font-size:0.9rem; font-weight:normal; color:#525F6B;">项</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             with k2:
                 st.markdown(f"""
                 <div class="kpi-card" style="border-top-color: #78BE20;">
-                    <div class="kpi-title">✅ 已完成闭环 (Completed)</div>
-                    <div class="kpi-value" style="color: #2E7D32;">{completed_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                    <div class="kpi-title">🟢 已闭环结束 (Complete='Y')</div>
+                    <div class="kpi-value" style="color: #2E7D32;">{completed_cases} <span style="font-size:0.9rem; font-weight:normal; color:#525F6B;">项</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             with k3:
                 st.markdown(f"""
                 <div class="kpi-card" style="border-top-color: #E20015;">
-                    <div class="kpi-title">⏳ 待处理/进行中 (Pending)</div>
-                    <div class="kpi-value" style="color: #E20015;">{pending_cases} <span style="font-size:1rem; font-weight:normal; color:#525F6B;">条</span></div>
+                    <div class="kpi-title">🔴 待闭环处理 (Complete='N')</div>
+                    <div class="kpi-value" style="color: #E20015;">{pending_cases} <span style="font-size:0.9rem; font-weight:normal; color:#525F6B;">项</span></div>
                 </div>
                 """, unsafe_allow_html=True)
             with k4:
                 st.markdown(f"""
                 <div class="kpi-card" style="border-top-color: #008ECF;">
-                    <div class="kpi-title">🎯 闭环健康度 (Closure Rate)</div>
+                    <div class="kpi-title">🎯 闭环完成率 (Closure Rate)</div>
                     <div class="kpi-value" style="color: #005691;">{closure_rate:.1f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             st.write("")
 
-            # 3. 交互式可视化图表区
-            if HAS_PLOTLY and len(filtered_dash_df) > 0:
-                c_chart1, c_chart2 = st.columns([1, 2])
-                with c_chart1:
-                    st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-                    st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📊 闭环达成率分布</h5>", unsafe_allow_html=True)
-                    status_counts = filtered_dash_df['Normalized_Status'].value_counts().reset_index()
-                    status_counts.columns = ['Status', 'Count']
-                    fig_donut = px.pie(
-                        status_counts, 
-                        names='Status', 
-                        values='Count',
-                        hole=0.6,
-                        color='Status',
-                        color_discrete_map={'Completed': '#78BE20', 'Pending': '#E20015'}
-                    )
-                    fig_donut.update_traces(textposition='inside', textinfo='percent+label')
-                    fig_donut.update_layout(
-                        showlegend=False, 
-                        margin=dict(t=10, b=10, l=10, r=10),
-                        height=260,
-                        annotations=[dict(text=f"{closure_rate:.1f}%", x=0.5, y=0.5, font_size=24, font_color="#005691", showarrow=False)]
-                    )
-                    st.plotly_chart(fig_donut, use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+            # 2. 交互式过滤器与检索栏
+            f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
+            with f_col1:
+                status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"])
+            with f_col2:
+                sup_col_name = next((c for c in df.columns if 'supplier' in str(c).lower()), None)
+                if sup_col_name:
+                    sups = ["全部 (All)"] + sorted([str(x) for x in df[sup_col_name].dropna().unique() if str(x).strip() != ''])
+                else: sups = ["全部 (All)"]
+                chosen_sup = st.selectbox("👥 供应商:", options=sups)
+            with f_col3:
+                proj_col_name = next((c for c in df.columns if 'project' in str(c).lower() or 'part' in str(c).lower()), None)
+                if proj_col_name:
+                    projs = ["全部 (All)"] + sorted([str(x) for x in df[proj_col_name].dropna().unique() if str(x).strip() != ''])
+                else: projs = ["全部 (All)"]
+                chosen_proj = st.selectbox("🚗 零件/项目:", options=projs)
+            with f_col4:
+                search_q = st.text_input("🔍 关键字检索:", placeholder="输入编号/原因/失效模式...")
 
-                with c_chart2:
-                    st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-                    st.markdown("<h5 style='color:#005691; margin-bottom:10px;'>📈 供应商缺陷与闭环分布</h5>", unsafe_allow_html=True)
-                    if sup_col_name:
-                        chart_df = filtered_dash_df.copy()
-                        chart_df[sup_col_name] = chart_df[sup_col_name].astype(str)
-                        sup_summary = chart_df.groupby([sup_col_name, 'Normalized_Status']).size().reset_index(name='Count')
-                        fig_bar = px.bar(
-                            sup_summary, 
-                            x=sup_col_name, 
-                            y='Count', 
-                            color='Normalized_Status',
-                            barmode='stack',
-                            color_discrete_map={'Completed': '#005691', 'Pending': '#E20015'},
-                            labels={sup_col_name: '供应商 (Supplier)', 'Count': '案例数', 'Normalized_Status': '闭环状态'}
-                        )
-                        fig_bar.update_layout(margin=dict(t=10, b=20, l=20, r=10), height=260, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-                        st.plotly_chart(fig_bar, use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+            # 过滤逻辑
+            view_df = df.copy()
+            if status_filter == "已完成 (Closed)":
+                view_df = view_df[view_df['Normalized_Status'] == 'Completed']
+            elif status_filter == "待处理 (Open)":
+                view_df = view_df[view_df['Normalized_Status'] == 'Pending']
+                
+            if chosen_sup != "全部 (All)" and sup_col_name:
+                view_df = view_df[view_df[sup_col_name].astype(str) == chosen_sup]
+            if chosen_proj != "全部 (All)" and proj_col_name:
+                view_df = view_df[view_df[proj_col_name].astype(str) == chosen_proj]
+            if search_q:
+                view_df = view_df[view_df.astype(str).apply(lambda r: r.str.contains(search_q, case=False).any(), axis=1)]
 
-            # 4. 图文并茂的案例详情画廊 (已修复 use_container_width)
-            st.markdown(f"#### 🔎 案例图文全景画廊 (共筛选出 {len(filtered_dash_df)} 条记录)")
+            st.write("")
+
+            # 3. 双屏联动分面矩阵视图 (左侧轻盈列表 + 右侧聚焦检视面板)
+            col_list_view, col_detail_view = st.columns([1.6, 1.4])
             
-            if len(filtered_dash_df) == 0:
-                st.warning("⚠️ 当前过滤条件下未检索到相关案例。")
-            else:
-                for idx, row in filtered_dash_df.iterrows():
-                    serial_val = row.get(serial_no_col, 'N/A')
-                    desc_val = row.get('LL Brief Description', row.get('Failure Mode', 'N/A'))
-                    proj_val = row.get('Project/Part name', 'N/A')
-                    rc_val = row.get('Root Cause', '未录入根本原因')
-                    ll_point_val = row.get('LL point', row.get('Corrective Action', '未录入建议'))
-                    status_val = row.get('Normalized_Status', 'Pending')
+            with col_list_view:
+                st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条)")
+                
+                # 构造轻量级列表展示列
+                view_df['状态 (Status)'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已闭环' if x == 'Completed' else '🔴 进行中')
+                
+                table_disp_cols = [
+                    serial_no_col, 
+                    '状态 (Status)',
+                    'Project/Part name' if 'Project/Part name' in view_df.columns else proj_col_name,
+                    'Failure Mode' if 'Failure Mode' in view_df.columns else 'LL Brief Description'
+                ]
+                valid_table_cols = [c for c in table_disp_cols if c and c in view_df.columns]
+                
+                # 交互式单选查看详情
+                selected_case_serial = st.selectbox(
+                    "👉 点击选择需要检视的案例 (选择后右侧自动呈现详情与实物图):",
+                    options=view_df[serial_no_col].tolist() if len(view_df) > 0 else [],
+                    format_func=lambda s: f"[{s}] - {view_df[view_df[serial_no_col]==s]['Project/Part name'].values[0] if 'Project/Part name' in view_df.columns else ''}"
+                )
+                
+                # 以现代化紧凑表格展示列表
+                st.dataframe(
+                    view_df[valid_table_cols],
+                    use_container_width=True,
+                    height=420,
+                    hide_index=True
+                )
+
+            with col_detail_view:
+                st.markdown("##### 🔬 案例深度图文检视面板 (Focus Inspector)")
+                if selected_case_serial:
+                    focus_row = view_df[view_df[serial_no_col] == selected_case_serial].iloc[0]
+                    focus_status = focus_row.get('Normalized_Status', 'Pending')
                     
-                    _, card_ng_img = get_images_for_row(excel_file, sheet_name, header_idx, row.name)
+                    # 抓取当前选中案例的图片
+                    _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, focus_row.name)
+                    
+                    status_badge = '<span style="background:#E8F5E9; color:#2E7D32; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.8rem;">🟢 已闭环 (Completed)</span>' if focus_status == 'Completed' else '<span style="background:#FFEBEE; color:#C62828; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.8rem;">🔴 待闭环处理 (Pending)</span>'
                     
                     st.markdown(f"""
-                    <div class="case-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                            <div>
-                                <strong style="font-size:1.15rem; color:#005691;">📌 {serial_val}</strong>
-                                <span style="margin-left:12px; color:#525F6B; font-weight:600;">项目/零件: {proj_val}</span>
-                            </div>
-                            <div>
-                                <span class="{ 'badge-completed' if status_val == 'Completed' else 'badge-pending' }">
-                                    {'🟢 已闭环 Completed' if status_val == 'Completed' else '🔴 待处理 Pending'}
-                                </span>
-                            </div>
+                    <div class="inspector-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
+                            <span style="font-size:1.15rem; font-weight:700; color:#005691;">📌 {focus_row.get(serial_no_col, '')}</span>
+                            {status_badge}
                         </div>
+                        <div style="margin-bottom:8px;"><strong>🚗 零件 / 项目:</strong> <span style="color:#1C2B39;">{focus_row.get('Project/Part name', 'N/A')}</span></div>
+                        <div style="margin-bottom:8px;"><strong>⚠️ 失效简述 (Description):</strong><br><span style="color:#525F6B;">{focus_row.get('LL Brief Description', focus_row.get('Failure Mode', 'N/A'))}</span></div>
+                        <div style="margin-bottom:8px;"><strong>🔬 根本原因 (Root Cause):</strong><br><span style="color:#525F6B;">{focus_row.get('Root Cause', '未录入')}</span></div>
+                        <div style="margin-bottom:12px;"><strong>💡 学习核心点 (LL point):</strong><br><span style="color:#005691; font-weight:600;">{focus_row.get('LL point', focus_row.get('Corrective Action', '未录入'))}</span></div>
+                    </div>
                     """, unsafe_allow_html=True)
                     
-                    card_left, card_right = st.columns([3, 1])
-                    with card_left:
-                        st.markdown(f"**📝 失效描述 (Description):**\n{desc_val}")
-                        st.markdown(f"**🔬 根本原因 (Root Cause):**\n{rc_val}")
-                        st.markdown(f"**💡 经验学习核心 (LL Point / Action):**\n{ll_point_val}")
-                        
-                    with card_right:
-                        if card_ng_img:
-                            st.image(card_ng_img, caption="不良图片 (Defect Picture)", use_container_width=True)
-                        else:
-                            st.markdown("""
-                            <div style="height:120px; background:#F8FAFC; border:1px dashed #D0DCE5; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
-                                暂无图片 (No Picture)
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.write("")
+                    # 图片专用检视区
+                    if case_img:
+                        st.markdown("🖼️ **实物不良图片 (Defect Picture):**")
+                        st.image(case_img, use_container_width=True)
+                    else:
+                        st.markdown("""
+                        <div style="height:120px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
+                            ℹ️ 当前案例在 Excel 中无图片附件 (No Picture Available)
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("👈 请在左侧列表中点击选择一条记录以查看详细图文信息。")
                     
     except Exception as e:
         st.error(f"❌ 读取或渲染异常: {e}")
