@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Direct G: Drive & Local Repo Support)
-- Reads G: Drive files directly when running locally on Windows
-- Auto-fallbacks to repository files if deployed on Cloud/Linux
-- Dual Attachments: Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
+BOSCH | PCB Lesson Learn Quality Studio (Multi-Version & Smart Scanner Edition)
+- Auto-Detects & Adapts to all 'PCB Lesson Learn Master List*.xlsx/xlsm' versions
+- Automatically selects the newest version with manual dropdown switching
+- Dual Attachments: Generated Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
 - 1:1 Mirror Prompt with 3-Column Tables & Clean Output
 =============================================================================
 """
@@ -18,6 +18,7 @@ from docx.oxml import OxmlElement
 import datetime
 import io
 import os
+import glob
 import zipfile
 import re
 import openpyxl
@@ -92,55 +93,77 @@ st.markdown("""
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
     <div>
         <h2 style="color: #005691; margin: 0; font-weight: 700;">🔴 BOSCH | PCB Lesson Learn 协同工作台</h2>
-        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量报告规范 · 原始数据无损提取 ➔ M-PU Bot 润色 ➔ 模板图文精准注入 ➔ 邮件一键闭环</p>
+        <p style="color: #525F6B; font-size: 0.95rem; margin: 4px 0 0 0;">FEBER 质量报告规范 · 智能适配多版本 Master List (.xlsx / .xlsm) · 邮件草稿一键闭环</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. 跨平台路径自适应解析 (优先直接读取 G 盘，支持相对目录回退)
+# 2. 智能多版本文件自动检索机制 (扫描 G 盘与当前应用目录)
 # -----------------------------------------------------------------------------
 BASE_G_DIR = r"G:\02_7_M-PQA-RBAC1\08_PQA_AE\09_PQA2\11_PCB\04_Lessons learn"
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 TEAMS_BOT_URL = "https://teams.microsoft.com/l/app/ffcadcc0-464f-4110-a065-0e3b4733baa9?source=bot-header-share-entrypoint"
 
-def get_valid_file_path(default_g_filename, candidate_names=None):
-    """自适应查找有效文件路径"""
-    if candidate_names is None:
-        candidate_names = [default_g_filename]
-        
-    for name in candidate_names:
-        # 1. 优先尝试本地 G 盘路径
-        g_candidate = os.path.join(BASE_G_DIR, name)
-        if os.path.exists(g_candidate):
-            return g_candidate
-            
-        # 2. 尝试当前执行目录
-        c_candidate = os.path.join(CURRENT_DIR, name)
-        if os.path.exists(c_candidate):
-            return c_candidate
-            
-        # 3. 尝试直接相对路径
-        if os.path.exists(name):
-            return name
-            
-    # 默认返回 G 盘全路径供输入框展示
-    return os.path.join(BASE_G_DIR, default_g_filename)
+def scan_all_master_lists():
+    """扫描所有符合 PCB Lesson Learn Master List 规则的 .xlsx 和 .xlsm 文件并按修改时间倒序排列"""
+    search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
+    found_files = []
+    seen = set()
+    
+    for s_dir in search_dirs:
+        if os.path.exists(s_dir):
+            for ext in ["*.xlsx", "*.xlsm"]:
+                pattern = os.path.join(s_dir, f"PCB Lesson Learn Master List*{ext}")
+                for fpath in glob.glob(pattern):
+                    real_path = os.path.abspath(fpath)
+                    if real_path not in seen and not os.path.basename(real_path).startswith("~$"):
+                        seen.add(real_path)
+                        found_files.append(real_path)
+                        
+    # 按最后修改时间倒序排序（最新的排在最前）
+    found_files.sort(key=lambda x: os.path.getmtime(x) if os.path.exists(x) else 0, reverse=True)
+    return found_files
+
+def resolve_exact_file(filename_list):
+    """自适应查找具体单个文件"""
+    search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
+    for fname in filename_list:
+        for s_dir in search_dirs:
+            target = os.path.join(s_dir, fname)
+            if os.path.exists(target):
+                return target
+        if os.path.exists(fname):
+            return fname
+    return None
 
 st.sidebar.markdown("### ⚙️ 数据源路径配置")
 
-# 自动解析对应文件
-default_excel = get_valid_file_path("PCB Lesson Learn Master List.xlsx", ["PCB Lesson Learn Master List.xlsx", "PCB Lesson Learn Master List.xlsm"])
-default_template = get_valid_file_path("Lessons Learned Report Problem Solving.docx", [
+# 1. 扫描所有可用的 Master List 版本
+available_master_lists = scan_all_master_lists()
+
+if available_master_lists:
+    # 默认选中最新修改的那个版本
+    chosen_excel = st.sidebar.selectbox(
+        "📊 检测到 Master List 版本 (自动置顶最新):",
+        options=available_master_lists,
+        format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%Y-%m-%d %H:%M')})"
+    )
+    excel_path = chosen_excel
+else:
+    excel_path = st.sidebar.text_input("1. Master List 表格路径:", os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx"))
+
+# 2. 匹配 Word 模板
+resolved_template = resolve_exact_file([
     "Lessons Learned Report Problem Solving.docx",
     "Blank LL Template complete version.docx",
     "LL Template complete version.docx"
 ])
-default_feedback = get_valid_file_path("LL Feedback table_Supplier version_V1.xlsx")
+template_path = st.sidebar.text_input("2. Word 模板路径:", resolved_template if resolved_template else os.path.join(BASE_G_DIR, "Lessons Learned Report Problem Solving.docx"))
 
-excel_path = st.sidebar.text_input("1. Master List 表格路径:", default_excel)
-template_path = st.sidebar.text_input("2. Word 模板路径:", default_template)
-feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", default_feedback)
+# 3. 匹配 Feedback 表格
+resolved_feedback = resolve_exact_file(["LL Feedback table_Supplier version_V1.xlsx"])
+feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"))
 
 excel_file = None
 template_file = None
@@ -168,11 +191,11 @@ else:
     st.sidebar.warning("⚠️ Feedback 表: 未找到 (生成时将仅附加 Word 报告)")
 
 # -----------------------------------------------------------------------------
-# 3. 辅助解析函数（从 Excel 中提取图片及邮箱）
+# 3. 辅助解析函数（全面支持 .xlsx 和带宏的 .xlsm 提取图片及邮箱）
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
-    """从 Vendor code 表中读取供应商与邮箱映射"""
+    """从 Vendor code 表中读取供应商与邮箱映射 (支持 xlsx / xlsm)"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         xl = pd.ExcelFile(file_source)
@@ -204,12 +227,11 @@ def load_supplier_emails(file_source):
     return {}
 
 def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
-    """从 Excel 指定行提取 NG 和 OK 图片二进制流"""
-    import openpyxl
+    """从 Excel/xlsm 指定行提取 NG 和 OK 图片二进制流"""
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         wb = openpyxl.load_workbook(file_source, data_only=True)
-        ws = wb[sheet_name]
+        ws = wb[sheet_name] if sheet_name in wb.sheetnames else wb.active
         
         col_ng = -1
         col_ok = -1
@@ -242,7 +264,7 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
         return None, None
 
 def load_excel_robust(file_source):
-    """加载 Excel 并定位表头"""
+    """加载 Excel/xlsm 并定位表头"""
     if hasattr(file_source, 'seek'): file_source.seek(0)
     xl = pd.ExcelFile(file_source)
     sheet_names = xl.sheet_names
@@ -349,7 +371,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (100% 对应单元格与段落)
+# 5. 精准装配 Word 模板核心函数 (彻底攻克图片置入与格式)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -464,7 +486,7 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     insert_content_under_heading(doc, "Problem (Fundamental Problem)", prob_val)
 
-    # 5. 定向精准填充各个表格 (Picture 单元格 / 3. Lessons / 4. Potentially affected)
+    # 5. 定向精准填充各个表格 (Picture 紧凑置入 / 3. Lessons / 4. Potentially affected)
     picture_inserted = False
     for table in doc.tables:
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
@@ -572,7 +594,7 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = 'Sunny.LIU3@cn.bosch.com'
     msg['To'] = to_emails
-    msg.add_header('X-Unsent', '1')
+    msg.add_header('X-Unsent', '1') # 草稿可编辑模式
     
     # 注入 HTML 正文
     alt_part = MIMEMultipart('alternative')
