@@ -206,7 +206,18 @@ template_file = template_path if os.path.exists(template_path) else None
 feedback_file = feedback_path if os.path.exists(feedback_path) else None
 
 # -----------------------------------------------------------------------------
-# 3. 辅助数据处理函数
+# 3. 页面模式导航菜单定义 (必须在逻辑消费前声明)
+# -----------------------------------------------------------------------------
+app_mode = st.radio(
+    "👉 请选择工作模式 (Work Mode):",
+    options=["📑 模式一：FEBER 报告生成与邮件协同", "📊 模式二：高阶质量全景与闭环看板 (Executive Dashboard)"],
+    horizontal=True
+)
+
+st.write("---")
+
+# -----------------------------------------------------------------------------
+# 4. 辅助数据处理与图片提取函数
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
@@ -297,6 +308,70 @@ def load_excel_robust(file_source):
     df = pd.read_excel(file_source, sheet_name=target_sheet, header=header_idx)
     df.columns = df.columns.astype(str).str.strip()
     return df, target_sheet, header_idx
+
+def parse_bot_feber_response(bot_text):
+    parsed = {
+        'Abstract_Issue': '', 'Abstract_Problem': '', 'Abstract_Lessons': '',
+        'Product_Process': '', 'Component': '', 'Sub_Component': '',
+        'Problem': '', 'Lessons_Rows': [],
+        'What_Else': '', 'Where': '', 'When': '', 'Who': ''
+    }
+    m_abs = re.search(r'(?:0\.\s*Abstract|Abstract)\s*([\s\S]*?)(?=1\.\s*Product|$)', bot_text, re.I)
+    if m_abs:
+        t = m_abs.group(1)
+        i_m = re.search(r'Issue:\s*([\s\S]*?)(?=Problem:|$)', t, re.I)
+        p_m = re.search(r'Problem:\s*([\s\S]*?)(?=Lessons:|$)', t, re.I)
+        l_m = re.search(r'Lessons:\s*([\s\S]*?)(?=Tags:|Picture|1\.\s*Product|$)', t, re.I)
+        if i_m: parsed['Abstract_Issue'] = i_m.group(1).strip()
+        if p_m: parsed['Abstract_Problem'] = p_m.group(1).strip()
+        if l_m: parsed['Abstract_Lessons'] = l_m.group(1).strip()
+    
+    m_p = re.search(r'1\.\s*Product\s*/\s*Process\s*([\s\S]*?)(?=2\.\s*Problem|$)', bot_text, re.I)
+    if m_p:
+        t = m_p.group(1)
+        pp = re.search(r'Product\s*/\s*Process:\s*([^\n]+)', t, re.I)
+        cp = re.search(r'Component:\s*([^\n]+)', t, re.I)
+        sc = re.search(r'Sub-Component:\s*([^\n]+)', t, re.I)
+        if pp: parsed['Product_Process'] = pp.group(1).strip()
+        if cp: parsed['Component'] = cp.group(1).strip()
+        if sc: parsed['Sub_Component'] = sc.group(1).strip()
+        
+    m_prob = re.search(r'2\.\s*Problem[^\n]*\n([\s\S]*?)(?=3\.\s*Lessons|$)', bot_text, re.I)
+    if m_prob:
+        parsed['Problem'] = m_prob.group(1).strip()
+    
+    m_less = re.search(r'3\.\s*Lessons[^\n]*\n([\s\S]*?)(?=4\.\s*Potentially|$)', bot_text, re.I)
+    if m_less:
+        less_text = m_less.group(1).strip()
+        raw_lines = [l.strip() for l in less_text.split('\n') if l.strip()]
+        for line in raw_lines:
+            if "measures & sustainable solutions" in line.lower() or "---" in line or line.startswith("| :---") or line.startswith("Lessons\t"):
+                continue
+            if '\t' in line:
+                parts = [p.strip() for p in line.split('\t')]
+                if len(parts) >= 3: parsed['Lessons_Rows'].append((parts[0], parts[1], parts[2]))
+                elif len(parts) == 2: parsed['Lessons_Rows'].append((parts[0], parts[1], ""))
+                elif len(parts) == 1: parsed['Lessons_Rows'].append((parts[0], "", ""))
+            elif '|' in line:
+                parts = [p.strip() for p in line.split('|')[1:-1]]
+                if len(parts) >= 3: parsed['Lessons_Rows'].append((parts[0], parts[1], parsed[2]))
+                elif len(parts) == 2: parsed['Lessons_Rows'].append((parts[0], parts[1], ""))
+        if not parsed['Lessons_Rows']:
+            parsed['Lessons_Rows'].append((less_text, "", ""))
+            
+    m_pot = re.search(r'4\.\s*Potentially affected[^\n]*\n([\s\S]*?)(?=5\.\s*Appendix|$)', bot_text, re.I)
+    if m_pot:
+        t = m_pot.group(1)
+        w1 = re.search(r'What else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w2 = re.search(r'Where can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w3 = re.search(r'When can[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        w4 = re.search(r'Who else[^\n\t|]*[\t\|\n]([^\n|]+)', t, re.I)
+        if w1: parsed['What_Else'] = w1.group(1).strip()
+        if w2: parsed['Where'] = w2.group(1).strip()
+        if w3: parsed['When'] = w3.group(1).strip()
+        if w4: parsed['Who'] = w4.group(1).strip()
+        
+    return parsed
 
 # -----------------------------------------------------------------------------
 # 5. 精准装配 Word 模板并置入紧凑图片
@@ -458,10 +533,8 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
 
     return doc
 
-# -----------------------------------------------------------------------------
-# 6. 双附件生成
-# -----------------------------------------------------------------------------
 def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
+    """【双附件 Outlook 邮件生成引擎】"""
     serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
     failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
     subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
@@ -517,15 +590,15 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
     return msg.as_bytes()
 
 # -----------------------------------------------------------------------------
-# 7. 主交互渲染流程 (自适应变量定义与状态绑定)
+# 8. 全景数据流与交互渲染
 # -----------------------------------------------------------------------------
-if excel_file is not None and template_file is not None:
+if excel_file is not None:
     try:
         # A. 预读取与业务前提解析 (严格解析 Need='Y' & Complete or not 为 Completed/Pending)
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
-        # 提取关键字段
+        # 提取关键列
         serial_no_col = next((c for c in df.columns if 'serial' in str(c).lower()), 'LL Serials No')
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
@@ -561,10 +634,10 @@ if excel_file is not None and template_file is not None:
             df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
-        # 模式一：FEBER 报告生成与邮件协同
+        # 模式一：FEBER 模板生成与邮件协同
         # =========================================================================
         if app_mode == "📑 模式一：FEBER 报告生成与邮件协同":
-            # 读取反馈表 Excel 二进制
+            # 读取反馈表 Excel 二进制数据
             feedback_bytes = None
             feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
             if feedback_file is not None and os.path.exists(feedback_file):
@@ -597,7 +670,6 @@ if excel_file is not None and template_file is not None:
                         raw_facts_list.append(f"{col_name}: {val_str}")
             raw_facts_block = "\n".join(raw_facts_list)
             
-            # 1:1 还原包含 3 列表格原型的标准 FEBER Prompt
             prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
 You are an honest engineer; you provide always links to the sources and name the original slide/page number.
 Please stick to the facts. In case you have additional topics, supporting or additional useful information be creative, add them and highlight them in italic.
@@ -721,7 +793,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板
+        # 模式二：高阶质量全景与闭环看板 (Split Matrix View)
         # =========================================================================
         else:
             st.markdown("""
@@ -731,7 +803,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             </div>
             """, unsafe_allow_html=True)
 
-            # 1. KPI 统计卡片
+            # 1. 核心 KPI 动态指标栏
             total_cases = len(df)
             completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
             pending_cases = total_cases - completed_cases
@@ -769,7 +841,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 2. 交互式多维过滤器
+            # 2. 交互式过滤器与检索栏
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             with f_col1:
                 status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"])
@@ -804,7 +876,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 3. 双屏联动分面矩阵视图 (左侧表格行点击，右侧实时图文)
+            # 3. 双屏联动分面矩阵视图 (左侧纯点击表格 + 右侧焦点检视)
             col_list_view, col_detail_view = st.columns([1.5, 1.5])
             
             # 整理渲染数据
@@ -863,7 +935,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     """, unsafe_allow_html=True)
                     
                     st.write("")
-                    # 图片专用检视区 (BDS 2.0 优化，修复 use_container_width)
+                    # 图片专用检视区 (BDS 2.0 优化，使用 use_container_width)
                     if case_img:
                         st.markdown("🖼️ **实物不良图片 (Defect Picture):**")
                         st.image(case_img, use_container_width=True)
