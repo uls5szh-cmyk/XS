@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Quality Studio & Executive Intelligence Dashboard (Strict Column Match Edition)
-- Deep Cleaning of 'Complete or not' Cell values (Detects Y/N even with formulas/newlines)
-- Direct Row-Click Table Interaction (100% No Dropdowns, Instant Selection)
+BOSCH | PCB Lesson Learn Quality Studio (Production Edition)
+- Clean BDS 2.0 User Interface without Debug Boilerplate
 - Dual Attachments: Word Report + 'LL Feedback table_Supplier version_V1.xlsx'
-- Compatible with Local Windows G: Drive & Cloud deployment FALLBACK
+- Precision Table-Cell & Abstract Section Population (100% Aligned)
+- Interactive Split Matrix View (Click Row to Inspect)
 =============================================================================
 """
 
@@ -183,9 +183,9 @@ st.sidebar.markdown("### ⚙️ 系统数据源配置")
 available_master_lists = scan_all_master_lists()
 if available_master_lists:
     chosen_excel = st.sidebar.selectbox(
-        "📊 Master List 版本 (自动定位最新):",
+        "📊 Master List 版本:",
         options=available_master_lists,
-        format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%Y-%m-%d %H:%M')})"
+        format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%m/%d %H:%M')})"
     )
     excel_path = chosen_excel
 else:
@@ -210,7 +210,7 @@ feedback_file = feedback_path if os.path.exists(feedback_path) else None
 # -----------------------------------------------------------------------------
 app_mode = st.radio(
     "👉 请选择工作模式 (Work Mode):",
-    options=["📑 模式一：FEBER 报告生成与邮件协同", "📊 模式二：高阶质量全景与闭环看板 (Executive Dashboard)"],
+    options=["📑 FEBER 报告生成与邮件协同", "📊 闭环看板 (Executive Dashboard)"],
     horizontal=True
 )
 
@@ -533,6 +533,7 @@ def generate_eml_file_dual_attachment(row_data, to_emails="", doc_bytes=None, do
 
 if excel_file is not None and template_file is not None:
     try:
+        # A. 预读取与业务前提解析 (严格解析 Need='Y' & Complete or not 为 Completed/Pending)
         df, sheet_name, header_idx = load_excel_robust(excel_file)
         supplier_dict = load_supplier_emails(excel_file)
         
@@ -541,7 +542,7 @@ if excel_file is not None and template_file is not None:
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
         
-        # 1. 业务前提一：LL Need or not 必须为 Y
+        # 1. 第一前提：强制过滤只保留 LL Need or not == Y
         if need_col:
             df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
 
@@ -566,9 +567,7 @@ if excel_file is not None and template_file is not None:
                     
         # 3. 物理级去杂质清洗判定逻辑 (过滤不可见控制符、空格、换行符)
         def parse_completion_strict(val):
-            if pd.isna(val):
-                return 'Pending'
-            # 彻底清洗掉任何隐藏换行符、空格、制表符等杂质
+            if pd.isna(val): return 'Pending'
             v_clean = str(val).replace('\n', '').replace('\r', '').replace('\t', '').replace(' ', '').strip().upper()
             
             # 只要包含 "Y"、"YES"、"TRUE"、"1" 即代表闭环
@@ -584,7 +583,7 @@ if excel_file is not None and template_file is not None:
         # =========================================================================
         # 模式一：FEBER 报告生成与邮件协同
         # =========================================================================
-        if app_mode == "📑 模式一：FEBER 报告生成与邮件协同":
+        if app_mode == "📑 FEBER 报告生成与邮件协同":
             # 读取反馈表 Excel 二进制数据
             feedback_bytes = None
             feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
@@ -594,9 +593,9 @@ if excel_file is not None and template_file is not None:
                     
             gen_df = df.copy()
             st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">STEP 1</span> <h4 style="display:inline; margin-left:8px; color:#005691;">选择台账记录并提取事实</h4>', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">台账记录提取</span>', unsafe_allow_html=True)
             
-            search_kw = st.text_input("🔍 搜索记录 (序列号/供应商/失效模式):", placeholder="输入关键字实时过滤...")
+            search_kw = st.text_input("🔍 搜索记录:", placeholder="输入序列号/供应商/失效模式...")
             if search_kw:
                 gen_df = gen_df[gen_df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
                 
@@ -618,6 +617,7 @@ if excel_file is not None and template_file is not None:
                         raw_facts_list.append(f"{col_name}: {val_str}")
             raw_facts_block = "\n".join(raw_facts_list)
             
+            # 1:1 还原包含 3 列表格原型的标准 FEBER Prompt
             prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
 You are an honest engineer; you provide always links to the sources and name the original slide/page number.
 Please stick to the facts. In case you have additional topics, supporting or additional useful information be creative, add them and highlight them in italic.
@@ -670,24 +670,23 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 {raw_facts_block}"""
 
             st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">STEP 2</span> <h4 style="display:inline; margin-left:8px; color:#005691;">一键复制 Prompt 并在 Teams M-PU Bot 润色</h4>', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">Teams M-PU 润色 Prompt</span>', unsafe_allow_html=True)
             c_p, c_b = st.columns([3, 1])
             with c_p:
-                st.text_area("📋 已完整内嵌 3 列表格原型的工程 Prompt (点击右上角图标复制):", prompt_content, height=220)
+                st.text_area("📋 完整工程 Prompt (可一键复制):", prompt_content, height=220)
             with c_b:
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
-                st.caption("💡 操作提示：复制左侧带有 3 列表格的完整 Prompt，在 Teams 窗口中发送给 Bot。")
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">STEP 3</span> <h4 style="display:inline; margin-left:8px; color:#005691;">粘贴 Bot 回复并一键生成最终交付包</h4>', unsafe_allow_html=True)
+            st.markdown('<span class="bds-step-badge">数据回填与交付件生成</span>', unsafe_allow_html=True)
             col_in, col_sup = st.columns([3, 2])
             with col_in:
                 bot_reply = st.text_area(
-                    "📥 在此粘贴 M-PU Bot 润色后的完整回复：",
+                    "📥 粘贴 M-PU Bot 润色后的完整回复：",
                     height=220,
-                    placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons (包含3列表格), 4. Potentially affected 的完整文本..."
+                    placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons, 4. Potentially affected 的完整文本..."
                 )
             with col_sup:
                 selected_sups = st.multiselect("👥 选择收件供应商 (自动读取 Vendor code 邮箱):", options=list(supplier_dict.keys()))
@@ -700,9 +699,9 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True):
                 if template_file is None:
-                    st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
+                    st.error("❌ 未检测到 Word 模板，请确认路径。")
                 else:
-                    with st.spinner("正在定向装配表格、紧凑插入不良图片并生成双附件邮件草稿..."):
+                    with st.spinner("正在装配表格并生成双附件邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                         doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_img, ng_img)
                         bio = io.BytesIO()
@@ -720,7 +719,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                             feedback_filename
                         )
                         
-                        st.success("🎉 生成成功！邮件已包含【Word报告 + Excel反馈表】双附件，图片已紧凑居中嵌入。")
+                        st.success("🎉 生成成功！邮件已包含【Word报告 + Excel反馈表】双附件，图片已紧凑嵌入。")
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
@@ -744,24 +743,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
         # 模式二：高阶质量全景与闭环看板 (Split Matrix View)
         # =========================================================================
         else:
-            st.markdown("""
-            <div style="margin-bottom: 16px;">
-                <h3 style="color:#005691; margin:0; font-weight:700;">📊 PCB Quality Intelligence & Lessons Learned Dashboard</h3>
-                <p style="color:#525F6B; font-size:0.9rem; margin-top:4px;">仅展示 LL Need or not = 'Y' 的有效经验库 · 鼠标直选行查看图文全貌</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # -----------------------------------------------------------------
-            # 📊 贴心开发者列名诊断器（当显示不正常时，一秒查明列名和单元格真实内容）
-            # -----------------------------------------------------------------
-            with st.expander("🛠️ 系统表头与数据格式诊断器 (Diagnostic Console)", expanded=False):
-                st.write(f"**1. 当前定位到的状态控制列 (Complete Column):** `{complete_col}`")
-                if complete_col and len(df) > 0:
-                    st.write("**2. 前 5 条记录的原始 Complete or not 数据与系统净化后的状态对齐:**")
-                    diag_df = df[[serial_no_col, complete_col, 'Normalized_Status']].head(5)
-                    st.dataframe(diag_df)
-
-            # KPI 统计卡片
+            # 1. 核心 KPI 动态指标栏
             total_cases = len(df)
             completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
             pending_cases = total_cases - completed_cases
@@ -799,7 +781,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 2. 交互式过滤器与检索栏
+            # 2. 过滤检索栏
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             with f_col1:
                 status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"])
@@ -837,7 +819,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             # 3. 双屏联动分面矩阵视图 (左侧纯点击表格 + 右侧焦点检视)
             col_list_view, col_detail_view = st.columns([1.5, 1.5])
             
-            # 整理渲染数据
+            # 整理列表状态
             view_df['闭环状态'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已完成' if x == 'Completed' else '🔴 进行中')
             
             table_disp_cols = [
@@ -851,9 +833,8 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             selected_row_data = None
             
             with col_list_view:
-                st.markdown(f"##### 📋 质量经验库清单 (共 {len(view_df)} 条 · 点击任意行立即检视)")
+                st.markdown(f"##### 📋 经验库清单 (共 {len(view_df)} 条)")
                 
-                # 表格行点击选中 (无任何多余下拉框)
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -870,14 +851,12 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     selected_row_data = view_df.iloc[0]
 
             with col_detail_view:
-                st.markdown("##### 🔬 案例深度图文检视面板 (Focus Inspector)")
+                st.markdown("##### 🔬 经验卡片详情")
                 if selected_row_data is not None:
                     focus_status = selected_row_data.get('Normalized_Status', 'Pending')
-                    
-                    # 抓取当前选中案例的图片
                     _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row_data.name)
                     
-                    status_badge = '<span class="badge-completed">🟢 已闭环结束 (Complete = Y)</span>' if focus_status == 'Completed' else '<span class="badge-pending">🔴 待闭环处理 (Complete = N)</span>'
+                    status_badge = '<span class="badge-completed">🟢 已完成</span>' if focus_status == 'Completed' else '<span class="badge-pending">🔴 进行中</span>'
                     
                     st.markdown(f"""
                     <div class="inspector-panel">
@@ -885,28 +864,27 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                             <span style="font-size:1.2rem; font-weight:700; color:#005691;">📌 {selected_row_data.get(serial_no_col, '')}</span>
                             {status_badge}
                         </div>
-                        <div style="margin-bottom:8px;"><strong>🚗 零件 / 项目:</strong> <span style="color:#1C2B39;">{selected_row_data.get('Project/Part name', 'N/A')}</span></div>
-                        <div style="margin-bottom:8px;"><strong>⚠️ 失效简述 (Description):</strong><br><span style="color:#525F6B;">{selected_row_data.get('LL Brief Description', selected_row_data.get('Failure Mode', 'N/A'))}</span></div>
-                        <div style="margin-bottom:8px;"><strong>🔬 根本原因 (Root Cause):</strong><br><span style="color:#525F6B;">{selected_row_data.get('Root Cause', '未录入')}</span></div>
-                        <div style="margin-bottom:12px;"><strong>💡 学习核心点 (LL point):</strong><br><span style="color:#005691; font-weight:600;">{selected_row_data.get('LL point', selected_row_data.get('Corrective Action', '未录入'))}</span></div>
+                        <div style="margin-bottom:8px;"><strong>项目/零件 (Project):</strong> <span style="color:#1C2B39;">{selected_row_data.get('Project/Part name', 'N/A')}</span></div>
+                        <div style="margin-bottom:8px;"><strong>失效简述 (Description):</strong><br><span style="color:#525F6B;">{selected_row_data.get('LL Brief Description', selected_row_data.get('Failure Mode', 'N/A'))}</span></div>
+                        <div style="margin-bottom:8px;"><strong>根本原因 (Root Cause):</strong><br><span style="color:#525F6B;">{selected_row_data.get('Root Cause', '未录入')}</span></div>
+                        <div style="margin-bottom:12px;"><strong>学习核心点 (LL point):</strong><br><span style="color:#005691; font-weight:600;">{selected_row_data.get('LL point', selected_row_data.get('Corrective Action', '未录入'))}</span></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
                     st.write("")
-                    # 图片专用检视区
                     if case_img:
-                        st.markdown("🖼️ **实物不良图片 (Defect Picture):**")
+                        st.markdown("🖼 **不良图片:**")
                         st.image(case_img, use_container_width=True)
                     else:
                         st.markdown("""
                         <div style="height:120px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
-                            ℹ️ 当前案例在 Excel 中无图片附件 (No Picture Available)
+                            暂无实物图片
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("👈 表格中暂无数据。")
+                    st.info("👈 暂无数据。")
                     
     except Exception as e:
         st.error(f"❌ 读取或渲染异常: {e}")
 else:
-    st.info("ℹ️ 请在侧边栏确认 Master List (Excel) 文件的有效路径。")
+    st.info("ℹ️ 请在侧边栏确认 Master List 文件。")
