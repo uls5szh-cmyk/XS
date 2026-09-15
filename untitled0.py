@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Official MSG Template Edition)
-- Reads Official MSG Template: 'MPQR-AP LL  LL-xxxx-xx  Title 99.04 Delamination PCB.msg'
-- Accurate Variable Replacement: LL-xxxx-xx -> LL Serials No, Title -> Failure Mode
-- Dual Attachments: Generated Word Report + Feedback Excel
+BOSCH | PCB Lesson Learn Quality Studio (Exact New Email Template Edition)
+- Exact Match with New Email Body & Subject: M/PQR-AP LL | {LL Serials No} | Title {Failure Mode}
+- Dual Attachments: Generated Word Report (Att 1) + Feedback Excel (Att 2)
 - Compact Defect Image Viewport & Split Matrix Dashboard
 =============================================================================
 """
@@ -200,13 +199,6 @@ template_path = st.sidebar.text_input("2. Word 模板路径:", resolved_template
 
 resolved_feedback = resolve_exact_file(["LL Feedback table_Supplier version_V1.xlsx"])
 feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"))
-
-# 邮件 MSG 原型模板匹配
-resolved_msg = resolve_exact_file([
-    "MPQR-AP LL  LL-xxxx-xx  Title 99.04 Delamination PCB.msg",
-    "MPQR-AP LL LL-xxxx-xx Title 99.04 Delamination PCB.msg"
-])
-msg_template_path = st.sidebar.text_input("4. 邮件原型模板路径 (.msg):", resolved_msg if resolved_msg else os.path.join(BASE_G_DIR, "MPQR-AP LL  LL-xxxx-xx  Title 99.04 Delamination PCB.msg"))
 
 excel_file = excel_path if os.path.exists(excel_path) else None
 template_file = template_path if os.path.exists(template_path) else None
@@ -541,87 +533,60 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     return doc
 
 # -----------------------------------------------------------------------------
-# 6. 读取官方 MSG 模板并实现精准占位符替换与双附件封装
+# 6. 【核心重构】：生成全新的标准邮件模板并精准替换主题与正文变量
 # -----------------------------------------------------------------------------
 
-def build_email_from_msg_template(msg_path, row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
+def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
     """
-    【官方 MSG 邮件模板解析与变量精确映射引擎】
-    - 主题: 将模板中的 'LL-xxxx-xx' 替换为真实 'LL Serials No'，将占位标题替换为真实 'Failure Mode'
-    - 正文: 提取 MSG 原型正文或生成带官方红字时限的标准 HTML 正文并替换变量
-    - 附件: 挂载 Word 报告 + Excel 反馈表
+    【100% 精确映射全新邮件内容与主题】
+    - 主题: M/PQR-AP LL | {LL Serials No} | Title {Failure Mode} (彻底消除 LL-xxxx-xx 占位符)
+    - 正文: 采用用户指定的全新模板，并将 (Failure Mode) 替换为真实的 Failure Mode
+    - 附件: Attachment 1 (Word 报告) + Attachment 2 (Excel 反馈表)
     """
-    serial_no = str(row_data.get('LL Serials No', 'LL-xxxx-xx')).strip()
-    failure_mode = str(row_data.get('Failure Mode', '*****')).strip()
+    serial_no_val = str(row_data.get('LL Serials No', '')).strip()
+    if not serial_no_val or serial_no_val in ['nan', 'None']:
+        # 兼容其他列名
+        for k in row_data.keys():
+            if 'serial' in str(k).lower():
+                serial_no_val = str(row_data[k]).strip()
+                break
+    if not serial_no_val or serial_no_val in ['nan', 'None']:
+        serial_no_val = "LL-Export"
+        
+    failure_mode_val = str(row_data.get('Failure Mode', '*****')).strip()
+    if failure_mode_val in ['nan', 'None']:
+        failure_mode_val = "*****"
+        
+    # 【主题严格替换】：绝不再出现 'LL-xxxx-xx'
+    subject = f"M/PQR-AP LL | {serial_no_val} | Title {failure_mode_val}"
     
-    # 标准博世采购质量邮件主题格式
-    subject = f"M/PQR-AP LL | {serial_no} | Title {failure_mode}"
+    # 【正文严格采用您的全新邮件模板】
+    html_body = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Arial', sans-serif; font-size: 10.5pt; line-height: 1.6; color: #333333; }}
+            .red-bold {{ color: #E20015; font-weight: bold; }}
+            ul {{ margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }}
+            li {{ margin-bottom: 8px; }}
+        </style>
+    </head>
+    <body>
+        <p>Dear Supplier:</p>
+        <p>Recently, we summarized a lesson learn about <strong>{failure_mode_val}</strong>. Please review the attached LL document(attachment 1) and complete following tasks:</p>
+        <ul>
+            <li>Complete feedback form ( attachment2) based on self-evaluation on your own processes and send to your responsible contactor within <span class="red-bold">one week</span>.</li>
+            <li>After your self-evaluation, please close defined actions within <span class="red-bold">defined deadline</span>.</li>
+            <li>Our colleague may conduct onsite verification according to the information in feedback form in <span class="red-bold">if necessary</span>.</li>
+        </ul>
+        <p>If you have any question about this lesson learn, please contact us freely.</p>
+        <br>
+        <p>Best regards,</p>
+        <p><strong>Purchasing Quality Region Asia Pacific Team</strong></p>
+    </body>
+    </html>
+    """
     
-    # 尝试从本地 MSG 模板中读取原汁原味的 HTML 内容
-    template_html_body = None
-    if msg_path and os.path.exists(msg_path):
-        try:
-            with open(msg_path, 'rb') as f:
-                content_bytes = f.read()
-                
-            # 提取 MSG 文件中的主题原型并替换
-            try:
-                # 寻找 MSG 内部的主题字符串
-                subj_match = re.search(rb'M/PQR-AP LL\s*\|\s*LL-xxxx-xx\s*\|\s*Title[^\x00\r\n<]+', content_bytes, re.I)
-                if subj_match:
-                    raw_subj_str = subj_match.group(0).decode('utf-8', errors='ignore').strip()
-                    subject = raw_subj_str.replace('LL-xxxx-xx', serial_no)
-                    subject = re.sub(r'Title\s+.*', f"Title {failure_mode}", subject)
-            except Exception:
-                pass
-
-            # 寻找 MSG 内部存储的 HTML 源码片段
-            html_start = content_bytes.find(b'<html')
-            if html_start == -1:
-                html_start = content_bytes.find(b'<HTML')
-            html_end = content_bytes.find(b'</html>')
-            if html_end == -1:
-                html_end = content_bytes.find(b'</HTML>')
-                
-            if html_start != -1 and html_end != -1:
-                raw_html = content_bytes[html_start:html_end+7].decode('utf-8', errors='ignore')
-                # 动态将模板中的占位符替换为当前案例真实数据
-                raw_html = raw_html.replace('LL-xxxx-xx', serial_no)
-                raw_html = raw_html.replace('99.04 Delamination PCB', failure_mode)
-                raw_html = re.sub(r'(about\s+<strong>)[^<]+(</strong>)', rf'\g<1>{failure_mode}\g<2>', raw_html, flags=re.I)
-                template_html_body = raw_html
-        except Exception:
-            template_html_body = None
-            
-    # 如果未能从二进制 MSG 中提取，采用完全对齐的官方 1:1 标准 HTML 模板
-    if not template_html_body:
-        template_html_body = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: 'Arial', sans-serif; font-size: 10.5pt; line-height: 1.6; color: #333333; }}
-                .red-bold {{ color: #E20015; font-weight: bold; }}
-                ul {{ margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }}
-                li {{ margin-bottom: 8px; }}
-            </style>
-        </head>
-        <body>
-            <p>Dear Supplier:</p>
-            <p>Recently, we summarized a lesson learn about <strong>{failure_mode}</strong> (Serial No: <strong>{serial_no}</strong>). Please review the attached LL document and complete following tasks:</p>
-            <ul>
-                <li>Complete feedback form based on self-evaluation on your own processes and send to your responsible PQR and PUQ-PQA (ME) within <span class="red-bold">one week.</span></li>
-                <li>After your self-evaluation, please close defined actions within <span class="red-bold">three weeks.</span></li>
-                <li>Our PQR or PUQ-PQA colleague may conduct onsite verification according to the information in feedback form in <span class="red-bold">one month.</span></li>
-            </ul>
-            <p>If you have any question about this lesson learn, please contact with your responsible PQR and PUQ-PQA (ME).</p>
-            <br>
-            <p>Best regards,</p>
-            <p><strong>Purchasing Quality Region Asia Pacific Team</strong><br>
-            Robert Bosch GmbH</p>
-        </body>
-        </html>
-        """
-
     msg = MIMEMultipart('mixed')
     msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = 'Sunny.LIU3@cn.bosch.com'
@@ -629,10 +594,10 @@ def build_email_from_msg_template(msg_path, row_data, to_emails="", doc_bytes=No
     msg.add_header('X-Unsent', '1') # 草稿可编辑模式
     
     alt_part = MIMEMultipart('alternative')
-    alt_part.attach(MIMEText(template_html_body, 'html', 'utf-8'))
+    alt_part.attach(MIMEText(html_body, 'html', 'utf-8'))
     msg.attach(alt_part)
     
-    # 附件 1：Word 报告
+    # 附件 1：Word 报告 (attachment 1)
     if doc_bytes:
         part_doc = MIMEBase('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document')
         part_doc.set_payload(doc_bytes)
@@ -640,7 +605,7 @@ def build_email_from_msg_template(msg_path, row_data, to_emails="", doc_bytes=No
         part_doc.add_header('Content-Disposition', f'attachment; filename="{doc_filename}"')
         msg.attach(part_doc)
         
-    # 附件 2：供应商反馈评估表 (Excel)
+    # 附件 2：供应商反馈评估表 (attachment 2)
     if feedback_bytes:
         part_fb = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         part_fb.set_payload(feedback_bytes)
@@ -648,7 +613,7 @@ def build_email_from_msg_template(msg_path, row_data, to_emails="", doc_bytes=No
         part_fb.add_header('Content-Disposition', f'attachment; filename="{feedback_filename}"')
         msg.attach(part_fb)
         
-    return msg.as_bytes()
+    return msg.as_bytes(), subject
 
 # -----------------------------------------------------------------------------
 # 7. 主交互数据流处理与绝对物理清洗逻辑
@@ -813,7 +778,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True):
                 if template_file is None:
-                    st.error("❌ 未检测到 Word 模板，请确认路径。")
+                    st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
                     with st.spinner("正在装配表格并生成双附件邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
@@ -822,12 +787,15 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         doc.save(bio)
                         doc_bytes = bio.getvalue()
                         
-                        serial_str = str(selected_row.get(serial_no_col, 'LL-Export'))
-                        doc_filename = f"LL_Template_{serial_str}.docx"
+                        # 确保提取出真实的序列号用于文件名与主题
+                        raw_serial = str(selected_row.get(serial_no_col, '')).strip()
+                        if not raw_serial or raw_serial in ['nan', 'None']:
+                            raw_serial = "LL-Export"
+                            
+                        doc_filename = f"LL_Template_{raw_serial}.docx"
                         
-                        # 采用根据本地 MSG 邮件模板解析和变量替换的生成函数
-                        eml_bytes = build_email_from_msg_template(
-                            msg_template_path,
+                        # 【核心调用】：使用全新格式与主题逻辑生成邮件草稿
+                        eml_bytes, final_subject = build_new_email_dual_attachment(
                             selected_row, 
                             to_emails_str, 
                             doc_bytes, 
@@ -836,7 +804,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                             feedback_filename
                         )
                         
-                        st.success("🎉 生成成功！邮件已基于官方模板构建，主题与正文已同步更新，附带【Word报告 + Excel反馈表】双附件。")
+                        st.success(f"🎉 生成成功！邮件主题已更新为: `{final_subject}`")
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
@@ -848,9 +816,9 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                             )
                         with c_d2:
                             st.download_button(
-                                f"📧 下载 Outlook 草稿 (含双附件): Email_Draft_{serial_str}.eml",
+                                f"📧 下载 Outlook 草稿 (含双附件): Email_Draft_{raw_serial}.eml",
                                 eml_bytes,
-                                f"Email_Draft_{serial_str}.eml",
+                                f"Email_Draft_{raw_serial}.eml",
                                 mime="message/rfc822",
                                 use_container_width=True
                             )
@@ -989,8 +957,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     """, unsafe_allow_html=True)
                     
                     st.write("")
-                    
-                    # 紧凑型高清图片视口（固定280px居中，杜绝过大失真）
                     if case_img:
                         st.markdown("🖼 **不良图片 (Defect Picture):**")
                         c_img_space1, c_img_center, c_img_space2 = st.columns([1, 2, 1])
