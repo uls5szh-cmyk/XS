@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Unique Component ID Edition)
-- Fixed StreamlitDuplicateElementId: Added explicit, unique keys to all inputs
-- Native Wide-Band Centered Blue Matrix: Zero Image Clipping
+BOSCH | PCB Lesson Learn Quality Studio (Zero-Outer-Frame & True Centered Edition)
+- Erases the right-side bounding box: Removes outer borders completely
+- True Page Horizontal Centering: Independent, symmetrical blue-framed matrix
+- Dynamic N-box side-by-side alignment with zero boundary clipping
 - Actionable High-Contrast UI & Exact New Email Template
 =============================================================================
 """
@@ -221,9 +222,8 @@ def scan_all_master_lists():
                     if real_path not in seen and not os.path.basename(real_path).startswith("~$"):
                         seen.add(real_path)
                         found_files.append(real_path)
-    # 按时间降序
     found_files.sort(key=lambda x: os.path.getmtime(x) if os.path.exists(x) else 0, reverse=True)
-    return list(dict.fromkeys(found_files)) # 绝对去重
+    return list(dict.fromkeys(found_files))
 
 def resolve_exact_file(filename_list):
     search_dirs = [BASE_G_DIR, CURRENT_DIR, os.getcwd()]
@@ -244,34 +244,34 @@ if available_master_lists:
         "📊 Master List 版本:",
         options=available_master_lists,
         format_func=lambda x: f"{os.path.basename(x)} ({datetime.datetime.fromtimestamp(os.path.getmtime(x)).strftime('%m/%d %H:%M')})",
-        key="unique_master_list_selectbox_v3"
+        key="unique_master_list_selectbox_v4"
     )
     excel_path = chosen_excel
 else:
-    excel_path = st.sidebar.text_input("1. Master List 表格路径:", os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx"), key="inp_master_list_path_v3")
+    excel_path = st.sidebar.text_input("1. Master List 表格路径:", os.path.join(BASE_G_DIR, "PCB Lesson Learn Master List.xlsx"), key="inp_master_list_path_v4")
 
 resolved_template = resolve_exact_file([
     "Lessons Learned Report Problem Solving.docx",
     "Blank LL Template complete version.docx",
     "LL Template complete version.docx"
 ])
-template_path = st.sidebar.text_input("2. Word 模板路径:", resolved_template if resolved_template else os.path.join(BASE_G_DIR, "Lessons Learned Report Problem Solving.docx"), key="inp_template_path_v3")
+template_path = st.sidebar.text_input("2. Word 模板路径:", resolved_template if resolved_template else os.path.join(BASE_G_DIR, "Lessons Learned Report Problem Solving.docx"), key="inp_template_path_v4")
 
 resolved_feedback = resolve_exact_file(["LL Feedback table_Supplier version_V1.xlsx"])
-feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"), key="inp_feedback_path_v3")
+feedback_path = st.sidebar.text_input("3. Feedback 表格路径:", resolved_feedback if resolved_feedback else os.path.join(BASE_G_DIR, "LL Feedback table_Supplier version_V1.xlsx"), key="inp_feedback_path_v4")
 
 excel_file = excel_path if os.path.exists(excel_path) else None
 template_file = template_path if os.path.exists(template_path) else None
 feedback_file = feedback_path if os.path.exists(feedback_path) else None
 
 # -----------------------------------------------------------------------------
-# 3. 页面模式导航菜单定义 (唯一 key)
+# 3. 页面模式导航菜单定义
 # -----------------------------------------------------------------------------
 app_mode = st.radio(
     "👉 请选择工作模式 (Work Mode):",
     options=["📑 FEBER 报告生成与邮件协同", "📊 闭环看板 (Executive Dashboard)"],
     horizontal=True,
-    key="unique_main_app_mode_radio_v3"
+    key="unique_main_app_mode_radio_v4"
 )
 
 st.markdown('<hr class="clean-divider">', unsafe_allow_html=True)
@@ -434,7 +434,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (彻底消除右偏与边缘裁切)
+# 5. 精准装配 Word 模板核心函数 (彻底消除外框限制，实现全页独立居中相框)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -523,90 +523,92 @@ def set_cell_background_color(cell, hex_color):
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
     tcPr.append(shd)
 
-def set_cell_borders(cell, border_color="005691"):
+def remove_cell_borders_completely(cell):
+    """【彻底抹除外层单元格的边框，消除灰色大框锁死的视觉】"""
     tcPr = cell._tc.get_or_add_tcPr()
-    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:left w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:right w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/></w:tcBorders>')
+    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>')
     tcPr.append(borders)
 
-def build_spacious_centered_blue_matrix(table, row_idx, cell_idx, img_bytes_list):
+def set_blue_box_borders(cell):
+    """为各个独立的相框设置博世深蓝细边框"""
+    tcPr = cell._tc.get_or_add_tcPr()
+    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="6" w:space="0" w:color="005691"/><w:left w:val="single" w:sz="6" w:space="0" w:color="005691"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="005691"/><w:right w:val="single" w:sz="6" w:space="0" w:color="005691"/></w:tcBorders>')
+    tcPr.append(borders)
+
+def render_independent_centered_blue_boxes(cell, img_bytes_list):
     """
-    【宽幅居中独立并列蓝框渲染器】
+    【彻底去掉外框，每个图片单独居中于一个蓝底小框中】
+    - 第一步：抹除原单元格的上下左右所有边框 (none)，去掉生硬的外层灰色大框；
+    - 第二步：在内部建立绝对居中子相框 (w:jc=center)；
+    - 第三步：有几个图片就生成几个独立的蓝框，每个图片在自己的框内水平几何居中，绝不挤在右边！
     """
-    target_cell = table.cell(row_idx, cell_idx)
-    target_cell.text = ""
+    if not img_bytes_list:
+        return
+        
+    cell.text = ""
+    # 1. 彻底清除外框的所有线条与背景色
+    remove_cell_borders_completely(cell)
+    set_cell_background_color(cell, "FFFFFF")
     
-    p_init = target_cell.paragraphs[0]
+    # 清除原单元格的所有边距干扰
+    p_init = cell.paragraphs[0]
     p_init.paragraph_format.left_indent = Inches(0)
     p_init.paragraph_format.right_indent = Inches(0)
     
     count = len(img_bytes_list)
     
-    if count == 1:
-        set_cell_background_color(target_cell, "005691")
-        p_init.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_init.paragraph_format.space_before = Pt(3)
-        p_init.paragraph_format.space_after = Pt(3)
-        
-        r_t = p_init.add_run("Picture – Product – Defect")
-        r_t.font.name = 'Arial'
-        r_t.font.size = Pt(8.5)
-        r_t.font.bold = True
-        r_t.font.color.rgb = RGBColor(255, 255, 255)
-        
-        p_img = target_cell.add_paragraph()
-        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img.paragraph_format.space_before = Pt(0)
-        p_img.paragraph_format.space_after = Pt(3)
-        p_img.paragraph_format.line_spacing = 1.0
-        p_img.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.3))
-        return
-
-    set_cell_background_color(target_cell, "FFFFFF")
-    sub_tbl = target_cell.add_table(rows=2, cols=count)
-    sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # 2. 创建并排居中的相框矩阵表格 (2行 x count列)
+    box_tbl = cell.add_table(rows=2, cols=count)
+    box_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    tblPr = sub_tbl._tbl.tblPr
+    # 底层强制居中
+    tblPr = box_tbl._tbl.tblPr
     tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
     
-    safe_total_width = 3.0
-    col_w = safe_total_width / count
-    img_render_width = Inches(col_w * 0.85)
+    # 安全计算宽度：单图宽约 2.2 英寸，双图单张约 1.25 英寸，确保绝不超出单元格右侧
+    total_safe_w = 2.9
+    single_col_w = total_safe_w / count
+    img_render_w = Inches(single_col_w * 0.88)
     
     for i in range(count):
-        c_h = sub_tbl.cell(0, i)
-        c_h.width = Inches(col_w)
-        set_cell_background_color(c_h, "005691")
+        # A. 独立深蓝标题框
+        c_head = box_tbl.cell(0, i)
+        c_head.width = Inches(single_col_w)
+        set_cell_background_color(c_head, "005691") # 独立博世深蓝
         
-        p_h = c_h.paragraphs[0]
+        p_h = c_head.paragraphs[0]
         p_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_h.paragraph_format.space_before = Pt(2)
         p_h.paragraph_format.space_after = Pt(2)
         p_h.paragraph_format.left_indent = Inches(0)
         p_h.paragraph_format.right_indent = Inches(0)
         
-        r_title = p_h.add_run(f"Picture #{i+1}")
-        r_title.font.name = 'Arial'
-        r_title.font.size = Pt(8.0)
-        r_title.font.bold = True
-        r_title.font.color.rgb = RGBColor(255, 255, 255)
+        box_label = "Picture – Defect" if count == 1 else f"Picture #{i+1}"
+        r_lbl = p_h.add_run(box_label)
+        r_lbl.font.name = 'Arial'
+        r_lbl.font.size = Pt(8.0)
+        r_lbl.font.bold = True
+        r_lbl.font.color.rgb = RGBColor(255, 255, 255)
         
-        c_b = sub_tbl.cell(1, i)
-        c_b.width = Inches(col_w)
-        set_cell_background_color(c_b, "F8FAFC")
-        set_cell_borders(c_b, "005691")
+        # B. 独立图片卡槽 (浅色底托 + 细蓝边框 + 水平垂直绝对几何居中)
+        c_img = box_tbl.cell(1, i)
+        c_img.width = Inches(single_col_w)
+        set_cell_background_color(c_img, "F8FAFC")
+        set_blue_box_borders(c_img)
         
-        tcPr = c_b._tc.get_or_add_tcPr()
+        tcPr = c_img._tc.get_or_add_tcPr()
         tcPr.append(parse_xml(f'<w:vAlign {nsdecls("w")} w:val="center"/>'))
         
-        p_b = c_b.paragraphs[0]
-        p_b.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_b.paragraph_format.space_before = Pt(2)
-        p_b.paragraph_format.space_after = Pt(2)
-        p_b.paragraph_format.line_spacing = 1.0
-        p_b.paragraph_format.left_indent = Inches(0)
-        p_b.paragraph_format.right_indent = Inches(0)
+        p_i = c_img.paragraphs[0]
+        p_i.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_i.paragraph_format.space_before = Pt(2)
+        p_i.paragraph_format.space_after = Pt(2)
+        p_i.paragraph_format.line_spacing = 1.0
+        p_i.paragraph_format.left_indent = Inches(0)
+        p_i.paragraph_format.right_indent = Inches(0)
         
-        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[i]), width=img_render_width)
+        # 居中置入图片，留足边缘呼吸间隙
+        p_i.add_run().add_picture(io.BytesIO(img_bytes_list[i]), width=img_render_w)
 
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None, ng_imgs=None):
     if hasattr(template_source, 'seek'):
@@ -639,20 +641,23 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
     replace_field_value_in_doc(doc, "Component:", comp_val)
     replace_field_value_in_doc(doc, "Sub-Component:", sub_val)
 
+    # 紧凑写入第2章内容，彻底清除多余空行与隐藏分页符
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     write_problem_compact_and_clean_pagebreaks(doc, prob_val)
 
+    # 彻底抹除外层灰色大框，每个图片单独在蓝底小框中居中呈现
     for table in doc.tables:
         for r_idx, row in enumerate(table.rows):
             for c_idx, cell in enumerate(row.cells):
                 c_txt = cell.text.lower().replace(" ", "")
                 if ("picture" in c_txt or "defect" in c_txt or "not-ok" in c_txt) and "ok-part" not in c_txt:
                     if ng_imgs:
-                        build_spacious_centered_blue_matrix(table, r_idx, c_idx, ng_imgs)
+                        render_independent_centered_blue_boxes(cell, ng_imgs)
                 elif "ok-part" in c_txt:
                     if ok_imgs:
-                        build_spacious_centered_blue_matrix(table, r_idx, c_idx, ok_imgs)
+                        render_independent_centered_blue_boxes(cell, ok_imgs)
 
+        # Lessons 表格动态多行装配
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
         if "lessons" in t_header and ("measures" in t_header or "root cause" in t_header):
             lessons_rows = bot_data.get('Lessons_Rows', [])
@@ -668,8 +673,9 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
             for row_tuple in lessons_rows:
                 new_row = table.add_row()
                 for i_c in range(min(3, len(row_tuple))):
-                    set_cell_formatted_text(new_row.cells[i_c], row_tuple[i_c])
+                    set_cell_formatted_text(new_row.cells[i_c], row_tuple[i_c] if i_c < len(row_tuple) else "")
 
+        # Potentially affected 表格填充
         elif "what else" in t_header or "potentially" in t_header or len(table.rows) == 4:
             w_map = {
                 0: bot_data.get('What_Else') or raw_row.get('What else could be additionally affected?') or 'Other PCB suppliers manufacturing multilayer boards using similar pattern plating processes.',
@@ -769,11 +775,9 @@ if excel_file is not None and template_file is not None:
         supplier_scope_col = next((c for c in df.columns if 'scope' in str(c).lower() or 'task' in str(c).lower()), 'LL Supplier Scope')
         need_col = next((c for c in df.columns if 'need or not' in str(c).lower() or 'need' in str(c).lower()), None)
         
-        # 1. 业务前提一：LL Need or not 必须为 Y
         if need_col:
             df = df[df[need_col].astype(str).str.strip().str.upper() == 'Y'].copy()
 
-        # 2. 物理级底层穿透：精准锁定 Complete or not 列
         complete_col = None
         for col in df.columns:
             col_str = str(col).strip()
@@ -818,7 +822,7 @@ if excel_file is not None and template_file is not None:
                     <strong>📌 闭环协同标准化作业规范：</strong><br>
                     1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
                     2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
-                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（宽幅居中独立相框）与已挂载双附件的新版邮件草稿。
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（外框已抹除，多图各成独立居中蓝框）与新版邮件草稿。
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -831,7 +835,7 @@ if excel_file is not None and template_file is not None:
                 </div>
             """, unsafe_allow_html=True)
             
-            search_kw = st.text_input("🔍 搜索记录 (序列号 / 供应商 / 失效模式):", placeholder="输入关键字快速过滤...", key="unique_step1_search_input_v3")
+            search_kw = st.text_input("🔍 搜索记录 (序列号 / 供应商 / 失效模式):", placeholder="输入关键字快速过滤...", key="unique_step1_search_input_v4")
             if search_kw:
                 gen_df = gen_df[gen_df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
                 
@@ -839,7 +843,7 @@ if excel_file is not None and template_file is not None:
                 "👉 目标台账记录 (Target Record):",
                 options=gen_df.index,
                 format_func=lambda x: f"[{gen_df.loc[x, serial_no_col]}] {gen_df.loc[x, 'Failure Mode']} - {gen_df.loc[x, 'Project/Part name']}",
-                key="unique_step1_record_selector_v3"
+                key="unique_step1_record_selector_v4"
             )
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -916,7 +920,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             
             c_p, c_b = st.columns([3.2, 1])
             with c_p:
-                st.text_area("📋 完整工程 Prompt (纯白高对比高光文本域，点击右上角复制):", prompt_content, height=220, key="ta_prompt_content_v3")
+                st.text_area("📋 完整工程 Prompt (纯白高对比高光文本域，点击右上角复制):", prompt_content, height=220, key="ta_prompt_content_v4")
             with c_b:
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
@@ -937,10 +941,10 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     "📥 粘贴 M-PU Bot 润色后的完整回复：",
                     height=220,
                     placeholder="在此粘贴包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons, 4. Potentially affected 的完整文本...",
-                    key="ta_bot_reply_input_v3"
+                    key="ta_bot_reply_input_v4"
                 )
             with col_sup:
-                selected_sups = st.multiselect("👥 选择收件供应商 (自动解析邮箱):", options=list(supplier_dict.keys()), key="ms_sups_select_v3")
+                selected_sups = st.multiselect("👥 选择收件供应商 (自动解析邮箱):", options=list(supplier_dict.keys()), key="ms_sups_select_v4")
                 to_emails_list = []
                 for s in selected_sups:
                     to_emails_list.extend(supplier_dict[s])
@@ -948,11 +952,11 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 if to_emails_str:
                     st.info(f"📧 **自动收件人:**\n`{to_emails_str}`")
 
-            if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True, key="btn_generate_final_package_v3"):
+            if st.button("🚀 立即生成标准化 Word 报告与双附件 Outlook 邮件草稿", type="primary", use_container_width=True, key="btn_generate_final_package_v4"):
                 if template_file is None:
                     st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
-                    with st.spinner("正在装配表格、建立宽幅居中蓝框并生成邮件草稿..."):
+                    with st.spinner("正在装配表格、彻底抹除外框并居中生成独立蓝框..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                         doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_imgs, ng_imgs)
                         bio = io.BytesIO()
@@ -978,12 +982,12 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
-                                f"📥 下载 Word 报告 (多图已宽幅居中并排): {doc_filename}",
+                                f"📥 下载 Word 报告 (外框已除·独立蓝框居中): {doc_filename}",
                                 doc_bytes,
                                 doc_filename,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                 use_container_width=True,
-                                key="btn_download_word_v3"
+                                key="btn_download_word_v4"
                             )
                         with c_d2:
                             st.download_button(
@@ -992,7 +996,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                                 f"Email_Draft_{raw_serial}.eml",
                                 mime="message/rfc822",
                                 use_container_width=True,
-                                key="btn_download_eml_v3"
+                                key="btn_download_eml_v4"
                             )
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1039,21 +1043,21 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             with f_col1:
-                status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"], key="sb_dash_status_v3")
+                status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"], key="sb_dash_status_v4")
             with f_col2:
                 sup_col_name = next((c for c in df.columns if 'supplier' in str(c).lower()), None)
                 if sup_col_name:
                     sups = ["全部 (All)"] + sorted([str(x) for x in df[sup_col_name].dropna().unique() if str(x).strip() != ''])
                 else: sups = ["全部 (All)"]
-                chosen_sup = st.selectbox("👥 供应商:", options=sups, key="sb_dash_sup_v3")
+                chosen_sup = st.selectbox("👥 供应商:", options=sups, key="sb_dash_sup_v4")
             with f_col3:
                 proj_col_name = next((c for c in df.columns if 'project' in str(c).lower() or 'part' in str(c).lower()), None)
                 if proj_col_name:
                     projs = ["全部 (All)"] + sorted([str(x) for x in df[proj_col_name].dropna().unique() if str(x).strip() != ''])
                 else: projs = ["全部 (All)"]
-                chosen_proj = st.selectbox("🚗 零件/项目:", options=projs, key="sb_dash_proj_v3")
+                chosen_proj = st.selectbox("🚗 零件/项目:", options=projs, key="sb_dash_proj_v4")
             with f_col4:
-                search_q = st.text_input("🔍 关键字检索:", placeholder="输入编号/原因/失效模式...", key="inp_dash_search_q_v3")
+                search_q = st.text_input("🔍 关键字检索:", placeholder="输入编号/原因/失效模式...", key="inp_dash_search_q_v4")
 
             view_df = df.copy()
             if status_filter == "已完成 (Closed)":
