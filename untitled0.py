@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Native Sibling Blue-Box Edition)
-- 100% Genuine Blue Box Replication: Direct Sibling Cells with #005691 Shading
-- Absolute Geometric Centering: Horizontal & Vertical Middle, Zero Right-Drift
-- Multi-Image Parallel Columns: Each image gets its own native blue-box block
+BOSCH | PCB Lesson Learn Quality Studio (Direct Table-Cell Splitting Edition)
+- Real Native Cell Splitting: N images = N parallel blue-header blocks
+- True Symmetrical Center Alignment: Clears cell margins, 100% centered
 - Actionable High-Contrast UI & Exact New Email Template
 =============================================================================
 """
@@ -22,6 +21,7 @@ import os
 import glob
 import zipfile
 import re
+import copy
 import openpyxl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -517,48 +517,34 @@ def write_problem_compact_and_clean_pagebreaks(doc, text_value):
                     p_curr.paragraph_format.space_after = Pt(0)
                 scan_idx += 1
 
-def set_cell_background_color(cell, hex_color):
-    """设置单元格背景底色 (博世深蓝 005691)"""
-    tcPr = cell._tc.get_or_add_tcPr()
-    shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
-    tcPr.append(shd)
-
-def set_cell_borders(cell, border_color="005691"):
-    """为蓝底方块设置微细精致边框"""
-    tcPr = cell._tc.get_or_add_tcPr()
-    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:left w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:right w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/></w:tcBorders>')
-    tcPr.append(borders)
-
-def set_cell_vertical_center(cell):
-    """设置单元格垂直几何居中"""
-    tcPr = cell._tc.get_or_add_tcPr()
-    vAlign = parse_xml(f'<w:vAlign {nsdecls("w")} w:val="center"/>')
-    tcPr.append(vAlign)
-
-def setup_native_blue_box(cell, box_title, img_bytes, img_width_inches):
+def build_independent_blue_block(cell, block_title, img_bytes, img_width_inches):
     """
-    【100% 原版蓝底方块渲染器】：
-    - 整个单元格背景直接设为原汁原味的博世深蓝 (#005691)；
-    - 顶部为居中白色加粗标题 (Picture – Product – Defect / Picture #1...)；
-    - 下方直接置入图片，段落与单元格全部几何绝对居中 (w:jc=center & w:vAlign=center)，绝不向右挤偏！
+    【构建原生独立博世蓝底方块】：
+    - 纯博世深蓝底色顶栏 (#005691) + 白色加粗标题 (Picture #1...)
+    - 下方直接紧凑嵌入不良图片，段落左右缩进归零并严格几何居中 (Center Alignment)
+    - 彻底解除向右堆挤，形成对称规整的独立框体
     """
     cell.text = ""
-    # 清空可能存在的任何悬挂或左右缩进
-    cell.paragraphs[0].paragraph_format.left_indent = Inches(0)
-    cell.paragraphs[0].paragraph_format.right_indent = Inches(0)
     
-    # 涂满原生博世深蓝底色
-    set_cell_background_color(cell, "005691")
-    set_cell_borders(cell, "005691")
-    set_cell_vertical_center(cell)
+    # 彻底清除单元格内部一切边缘缩进，确保完全居中
+    tcPr = cell._tc.get_or_add_tcPr()
+    tcMar = parse_xml(f'<w:tcMar {nsdecls("w")}><w:left w:w="40" w:type="dxa"/><w:right w:w="40" w:type="dxa"/><w:top w:w="60" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/></w:tcMar>')
+    tcPr.append(tcMar)
     
-    # 1. 顶部白色标题编号
+    # 1. 顶部深蓝标题框
     p_title = cell.paragraphs[0]
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_title.paragraph_format.space_before = Pt(3)
-    p_title.paragraph_format.space_after = Pt(3)
+    p_title.paragraph_format.space_before = Pt(0)
+    p_title.paragraph_format.space_after = Pt(2)
+    p_title.paragraph_format.left_indent = Inches(0)
+    p_title.paragraph_format.right_indent = Inches(0)
     
-    r_t = p_title.add_run(box_title)
+    # 顶部深蓝遮罩底色
+    pPr = p_title._p.get_or_add_pPr()
+    shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="005691"/>')
+    pPr.append(shd)
+    
+    r_t = p_title.add_run(f" {block_title} ")
     r_t.font.name = 'Arial'
     r_t.font.size = Pt(8.5)
     r_t.font.bold = True
@@ -567,8 +553,8 @@ def setup_native_blue_box(cell, box_title, img_bytes, img_width_inches):
     # 2. 居中置入实物不良图片
     p_img = cell.add_paragraph()
     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_img.paragraph_format.space_before = Pt(0)
-    p_img.paragraph_format.space_after = Pt(4)
+    p_img.paragraph_format.space_before = Pt(3)
+    p_img.paragraph_format.space_after = Pt(2)
     p_img.paragraph_format.line_spacing = 1.0
     p_img.paragraph_format.left_indent = Inches(0)
     p_img.paragraph_format.right_indent = Inches(0)
@@ -579,7 +565,7 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
     """
     【原生独立蓝底方块并列排版】
     - 如果有 1 张图片：当前蓝底方块直接居中呈现该图片；
-    - 如果有 2 张及以上图片：在主表格中直接并列生成 N 个与原模板一模一样的独立深蓝方块单元格，完全居中，互不干扰！
+    - 如果有 2 张及以上图片：直接在单元格内部构建并排铺满的纯净同级子矩阵，平分宽度，居中对齐，绝不向右挤压！
     """
     if hasattr(template_source, 'seek'):
         template_source.seek(0)
@@ -627,29 +613,31 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
                         count = len(ng_imgs)
                         if count == 1:
                             # 1张图：原版蓝底方块居中呈现
-                            setup_native_blue_box(cell, "Picture – Product – Defect", ng_imgs[0], Inches(2.2))
+                            build_independent_blue_block(cell, "Picture – Product – Defect", ng_imgs[0], Inches(2.2))
                         else:
-                            # 2张及以上：拆分为独立的同级蓝底并列方块
-                            # 动态在原单元格内建立严格居中的水平矩阵
+                            # 2张及以上：建立 N 列并列纯净矩阵，平分列宽，彻底居中
                             cell.text = ""
-                            set_cell_background_color(cell, "FFFFFF")
-                            tblPr = cell.paragraphs[0]
-                            tblPr.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            # 移除外层单元格背景色干扰
+                            tcPr = cell._tc.get_or_add_tcPr()
+                            shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="FFFFFF"/>')
+                            tcPr.append(shd)
                             
                             sub_tbl = cell.add_table(rows=1, cols=count)
                             sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            # 强制整个子表格水平居中
-                            sub_tbl._tbl.tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
                             
-                            total_w = 3.05
-                            single_w = total_w / count
-                            img_w = Inches(single_w * 0.85)
+                            # 强制子表格居中对齐，设置零外边距
+                            tblPr = sub_tbl._tbl.tblPr
+                            tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
+                            tblPr.append(parse_xml(f'<w:tblCellMar {nsdecls("w")}><w:left w:w="30" w:type="dxa"/><w:right w:w="30" w:type="dxa"/></w:tblCellMar>'))
+                            
+                            single_col_w = 3.05 / count
+                            img_render_w = Inches(single_col_w * 0.88)
                             
                             for i in range(count):
-                                target_box = sub_tbl.cell(0, i)
-                                target_box.width = Inches(single_w)
-                                # 每个框都是一个带有博世深蓝底色、带编号的独立原版方块！
-                                setup_native_blue_box(target_box, f"Picture #{i+1}", ng_imgs[i], img_w)
+                                sub_cell = sub_tbl.cell(0, i)
+                                sub_cell.width = Inches(single_col_w)
+                                # 每个框体独立绘制博世蓝底顶栏与居中图片！
+                                build_independent_blue_block(sub_cell, f"Picture #{i+1}", ng_imgs[i], img_render_w)
 
         # 3. Lessons 表格动态多行装配
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
@@ -667,7 +655,7 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
             for row_tuple in lessons_rows:
                 new_row = table.add_row()
                 for i_c in range(min(3, len(row_tuple))):
-                    set_cell_formatted_text(new_row.cells[i_c], row_tuple[i_c])
+                    set_cell_formatted_text(new_row.cells[i_c], row_tuple[c_idx] if i_c < len(row_tuple) else "")
 
         # 4. Potentially affected 表格填充
         elif "what else" in t_header or "potentially" in t_header or len(table.rows) == 4:
