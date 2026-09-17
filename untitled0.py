@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Independent Blue-Frame Matrix Edition)
-- Strict Horizontal & Vertical Centering: Zero right-shift, zero misalignment
-- Independent Blue-Header Card Frame per image (N images = N parallel frames)
-- Protected Boundaries: Each image sits safely in its own cell container
-- Actionable High-Contrast UI & Dual Attachment Outlook Draft
+BOSCH | PCB Lesson Learn Quality Studio (Native Sibling Blue-Box Edition)
+- 100% Genuine Blue Box Replication: Direct Sibling Cells with #005691 Shading
+- Absolute Geometric Centering: Horizontal & Vertical Middle, Zero Right-Drift
+- Multi-Image Parallel Columns: Each image gets its own native blue-box block
+- Actionable High-Contrast UI & Exact New Email Template
 =============================================================================
 """
 
@@ -432,7 +432,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (彻底居中独立蓝底卡片相框矩阵)
+# 5. 精准装配 Word 模板核心函数 (原版方块蓝底、绝对居中、并列方块)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -518,117 +518,69 @@ def write_problem_compact_and_clean_pagebreaks(doc, text_value):
                 scan_idx += 1
 
 def set_cell_background_color(cell, hex_color):
-    """为指定单元格设置底色 (如博世深蓝 005691)"""
+    """设置单元格背景底色 (博世深蓝 005691)"""
     tcPr = cell._tc.get_or_add_tcPr()
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
     tcPr.append(shd)
 
-def set_cell_border_clean(cell):
-    """设置整洁精细的细边框"""
+def set_cell_borders(cell, border_color="005691"):
+    """为蓝底方块设置微细精致边框"""
     tcPr = cell._tc.get_or_add_tcPr()
-    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:left w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:right w:val="single" w:sz="4" w:space="0" w:color="005691"/></w:tcBorders>')
+    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:left w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:bottom w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/><w:right w:val="single" w:sz="6" w:space="0" w:color="{border_color}"/></w:tcBorders>')
     tcPr.append(borders)
 
-def insert_dynamic_blue_boxed_images(cell, img_bytes_list):
+def set_cell_vertical_center(cell):
+    """设置单元格垂直几何居中"""
+    tcPr = cell._tc.get_or_add_tcPr()
+    vAlign = parse_xml(f'<w:vAlign {nsdecls("w")} w:val="center"/>')
+    tcPr.append(vAlign)
+
+def setup_native_blue_box(cell, box_title, img_bytes, img_width_inches):
     """
-    【彻底绝对居中 + 独立并列蓝底框排版引擎】
-    - 清除原有大框样式，解除任何右缩进限制；
-    - 根据图片数量 N，创建并列且等宽的 N 列独立微型相框；
-    - 每个框顶部为【博世深蓝底色 + 白色编号】，下方为【居中自适应图片】；
-    - 赋予底层 w:jc=center 属性，100% 绝对居中，绝不偏右！
+    【100% 原版蓝底方块渲染器】：
+    - 整个单元格背景直接设为原汁原味的博世深蓝 (#005691)；
+    - 顶部为居中白色加粗标题 (Picture – Product – Defect / Picture #1...)；
+    - 下方直接置入图片，段落与单元格全部几何绝对居中 (w:jc=center & w:vAlign=center)，绝不向右挤偏！
     """
-    if not img_bytes_list:
-        return
-        
     cell.text = ""
-    # 清空可能存在的缩进
+    # 清空可能存在的任何悬挂或左右缩进
     cell.paragraphs[0].paragraph_format.left_indent = Inches(0)
     cell.paragraphs[0].paragraph_format.right_indent = Inches(0)
     
-    count = len(img_bytes_list)
+    # 涂满原生博世深蓝底色
+    set_cell_background_color(cell, "005691")
+    set_cell_borders(cell, "005691")
+    set_cell_vertical_center(cell)
     
-    # 1. 只有 1 张图片的情况：单框标准居中
-    if count == 1:
-        set_cell_background_color(cell, "FFFFFF")
-        sub_tbl = cell.add_table(rows=2, cols=1)
-        sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        # 强制表格居中
-        tblPr = sub_tbl._tbl.tblPr
-        tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
-        
-        c_h = sub_tbl.cell(0, 0)
-        c_h.width = Inches(2.6)
-        set_cell_background_color(c_h, "005691")
-        p_h = c_h.paragraphs[0]
-        p_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_h.paragraph_format.space_before = Pt(2)
-        p_h.paragraph_format.space_after = Pt(2)
-        r_t = p_h.add_run("Picture – Product – Defect")
-        r_t.font.name = 'Arial'
-        r_t.font.size = Pt(9.0)
-        r_t.font.bold = True
-        r_t.font.color.rgb = RGBColor(255, 255, 255)
-        
-        c_b = sub_tbl.cell(1, 0)
-        c_b.width = Inches(2.6)
-        set_cell_background_color(c_b, "F8FAFC")
-        set_cell_border_clean(c_b)
-        p_b = c_b.paragraphs[0]
-        p_b.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_b.paragraph_format.space_before = Pt(2)
-        p_b.paragraph_format.space_after = Pt(2)
-        p_b.paragraph_format.line_spacing = 1.0
-        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.4))
-        return
-
-    # 2. 多张图片的情况：并列生成 N 个相互独立、等宽的专属蓝底相框
-    set_cell_background_color(cell, "FFFFFF")
-    sub_tbl = cell.add_table(rows=2, cols=count)
-    sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # 1. 顶部白色标题编号
+    p_title = cell.paragraphs[0]
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_title.paragraph_format.space_before = Pt(3)
+    p_title.paragraph_format.space_after = Pt(3)
     
-    # 强制整个子表格绝对居中对齐，绝不往右偏
-    tblPr = sub_tbl._tbl.tblPr
-    tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
+    r_t = p_title.add_run(box_title)
+    r_t.font.name = 'Arial'
+    r_t.font.size = Pt(8.5)
+    r_t.font.bold = True
+    r_t.font.color.rgb = RGBColor(255, 255, 255) # 纯白文字
     
-    # 计算每个独立框的绝对宽度与图片适配合适尺寸
-    total_avail_width = 3.1
-    single_box_width = total_avail_width / count
-    render_img_w = Inches(single_box_width * 0.88)
+    # 2. 居中置入实物不良图片
+    p_img = cell.add_paragraph()
+    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_img.paragraph_format.space_before = Pt(0)
+    p_img.paragraph_format.space_after = Pt(4)
+    p_img.paragraph_format.line_spacing = 1.0
+    p_img.paragraph_format.left_indent = Inches(0)
+    p_img.paragraph_format.right_indent = Inches(0)
     
-    for i in range(count):
-        # A. 顶部独立深蓝标题框 (带编号)
-        c_header = sub_tbl.cell(0, i)
-        c_header.width = Inches(single_box_width)
-        set_cell_background_color(c_header, "005691") # 独立深蓝
-        
-        p_h = c_header.paragraphs[0]
-        p_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_h.paragraph_format.space_before = Pt(2)
-        p_h.paragraph_format.space_after = Pt(2)
-        
-        r_lbl = p_h.add_run(f"Picture #{i+1}")
-        r_lbl.font.name = 'Arial'
-        r_lbl.font.size = Pt(8.5)
-        r_lbl.font.bold = True
-        r_lbl.font.color.rgb = RGBColor(255, 255, 255) # 纯白文字
-        
-        # B. 底部独立图片框 (浅灰底托 + 精细蓝框 + 绝对几何居中)
-        c_body = sub_tbl.cell(1, i)
-        c_body.width = Inches(single_box_width)
-        set_cell_background_color(c_body, "F8FAFC")
-        set_cell_border_clean(c_body)
-        
-        p_b = c_body.paragraphs[0]
-        p_b.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_b.paragraph_format.space_before = Pt(2)
-        p_b.paragraph_format.space_after = Pt(2)
-        p_b.paragraph_format.line_spacing = 1.0
-        
-        # 图片安全水平居中置入
-        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[i]), width=render_img_w)
+    p_img.add_run().add_picture(io.BytesIO(img_bytes), width=img_width_inches)
 
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None, ng_imgs=None):
+    """
+    【原生独立蓝底方块并列排版】
+    - 如果有 1 张图片：当前蓝底方块直接居中呈现该图片；
+    - 如果有 2 张及以上图片：在主表格中直接并列生成 N 个与原模板一模一样的独立深蓝方块单元格，完全居中，互不干扰！
+    """
     if hasattr(template_source, 'seek'):
         template_source.seek(0)
     doc = docx.Document(template_source)
@@ -659,26 +611,48 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
     replace_field_value_in_doc(doc, "Component:", comp_val)
     replace_field_value_in_doc(doc, "Sub-Component:", sub_val)
 
-    # 紧凑写入第2章内容，清除多余段落与硬分页
+    # 紧凑写入第2章内容，彻底清除多余空行与隐藏分页符
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     write_problem_compact_and_clean_pagebreaks(doc, prob_val)
 
-    # 表格多图并列深蓝标题框置入
-    picture_inserted = False
+    # =========================================================================
+    # 原生独立蓝底方块排版逻辑（消除右挤，严格几何居中）
+    # =========================================================================
     for table in doc.tables:
-        t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
-        
-        for row in table.rows:
-            for cell in row.cells:
+        for r_idx, row in enumerate(table.rows):
+            for c_idx, cell in enumerate(row.cells):
                 c_txt = cell.text.lower().replace(" ", "")
                 if ("picture" in c_txt or "defect" in c_txt or "not-ok" in c_txt) and "ok-part" not in c_txt:
                     if ng_imgs:
-                        insert_dynamic_blue_boxed_images(cell, ng_imgs)
-                        picture_inserted = True
-                elif "ok-part" in c_txt:
-                    if ok_imgs:
-                        insert_dynamic_blue_boxed_images(cell, ok_imgs)
+                        count = len(ng_imgs)
+                        if count == 1:
+                            # 1张图：原版蓝底方块居中呈现
+                            setup_native_blue_box(cell, "Picture – Product – Defect", ng_imgs[0], Inches(2.2))
+                        else:
+                            # 2张及以上：拆分为独立的同级蓝底并列方块
+                            # 动态在原单元格内建立严格居中的水平矩阵
+                            cell.text = ""
+                            set_cell_background_color(cell, "FFFFFF")
+                            tblPr = cell.paragraphs[0]
+                            tblPr.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            sub_tbl = cell.add_table(rows=1, cols=count)
+                            sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            # 强制整个子表格水平居中
+                            sub_tbl._tbl.tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
+                            
+                            total_w = 3.05
+                            single_w = total_w / count
+                            img_w = Inches(single_w * 0.85)
+                            
+                            for i in range(count):
+                                target_box = sub_tbl.cell(0, i)
+                                target_box.width = Inches(single_w)
+                                # 每个框都是一个带有博世深蓝底色、带编号的独立原版方块！
+                                setup_native_blue_box(target_box, f"Picture #{i+1}", ng_imgs[i], img_w)
 
+        # 3. Lessons 表格动态多行装配
+        t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
         if "lessons" in t_header and ("measures" in t_header or "root cause" in t_header):
             lessons_rows = bot_data.get('Lessons_Rows', [])
             if not lessons_rows:
@@ -692,9 +666,10 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
                 table._tbl.remove(tr)
             for row_tuple in lessons_rows:
                 new_row = table.add_row()
-                for c_idx in range(min(3, len(row_tuple))):
-                    set_cell_formatted_text(new_row.cells[c_idx], row_tuple[c_idx])
+                for i_c in range(min(3, len(row_tuple))):
+                    set_cell_formatted_text(new_row.cells[i_c], row_tuple[i_c])
 
+        # 4. Potentially affected 表格填充
         elif "what else" in t_header or "potentially" in t_header or len(table.rows) == 4:
             w_map = {
                 0: bot_data.get('What_Else') or raw_row.get('What else could be additionally affected?') or 'Other PCB suppliers manufacturing multilayer boards using similar pattern plating processes.',
@@ -975,7 +950,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 if template_file is None:
                     st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
-                    with st.spinner("正在装配表格、建立专属居中蓝底框并生成邮件草稿..."):
+                    with st.spinner("正在装配表格、建立原生居中蓝底方块并生成邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                         doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_imgs, ng_imgs)
                         bio = io.BytesIO()
@@ -1001,7 +976,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
-                                f"📥 下载 Word 报告 (多图已专属居中蓝框并排): {doc_filename}",
+                                f"📥 下载 Word 报告 (多图已带蓝底居中方块并排): {doc_filename}",
                                 doc_bytes,
                                 doc_filename,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
