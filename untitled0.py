@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Side-by-Side Image Layout Edition)
-- Strict Horizontal Side-by-Side Image Alignment (Zero Vertical Wrapping)
-- Dynamic Auto-Sizing based on Image Count (1 / 2 / 3 / 4-grid)
-- Clean Chapter 2 Whitespace: In-place text rewrite & break suppression
-- Actionable High-Contrast UI & Exact New Email Template
+BOSCH | PCB Lesson Learn Quality Studio (Compact Layout & No-Blank-Page Edition)
+- Fixed Chapter 2 Whitespace: Replaces existing paragraphs, deletes extra breaks
+- Smart Multi-Image Word Layout: Auto-grid / Inline scaling (Zero layout breaks)
+- Actionable BDS 2.0 Interface: Pure white inputs, neutral cards & no misclicks
+- Exact New Email Template & Dual Attachments
 =============================================================================
 """
 
@@ -431,7 +431,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板并置入【水平并列多图排版算法】
+# 5. 精准装配 Word 模板核心函数 (彻底消除第2章空白页与多图排版)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -477,7 +477,11 @@ def replace_field_value_in_doc(doc, field_label, new_value, is_abstract=False):
             return
 
 def write_problem_compact_and_clean_pagebreaks(doc, text_value):
-    """紧凑写入第2章内容，彻底清除多余空行与孤立分页符"""
+    """
+    【彻底根治空白页】：
+    1. 找到 '2. Problem' 标题后，复用并改写紧随其后的第一个段落；
+    2. 删除后续所有模板占位的多余空段落，并清除强制分页符 (Page Breaks)
+    """
     if not text_value:
         return
         
@@ -490,6 +494,7 @@ def write_problem_compact_and_clean_pagebreaks(doc, text_value):
             break
             
     if prob_idx != -1:
+        # 复用标题下方的第一个段落写入内容
         if prob_idx + 1 < len(paragraphs):
             target_p = paragraphs[prob_idx + 1]
             target_p.text = ""
@@ -501,86 +506,62 @@ def write_problem_compact_and_clean_pagebreaks(doc, text_value):
             r.font.size = Pt(10.5)
             r.font.bold = False
             
+            # 清理标题下方到第3章之间的多余空段落和隐藏分页符
             scan_idx = prob_idx + 2
             while scan_idx < len(paragraphs):
                 p_curr = paragraphs[scan_idx]
                 p_curr_txt = p_curr.text.strip().lower()
+                # 如果遇到了第3章标题，停止清理
                 if "3." in p_curr_txt or "lessons" in p_curr_txt:
                     break
+                # 检查并移除分页符
                 for br in p_curr._element.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}br'):
                     if br.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type') == 'page':
                         br.getparent().remove(br)
+                # 清除多余占位文字（如 Note: ... 等）
                 if len(p_curr_txt) < 80:
                     p_curr.text = ""
                     p_curr.paragraph_format.space_before = Pt(0)
                     p_curr.paragraph_format.space_after = Pt(0)
                 scan_idx += 1
 
-def insert_images_side_by_side_into_cell(cell, img_bytes_list):
-    """
-    【核心：严格水平并列排版算法】
-    - 绝不在单元格内上下堆叠！
-    - 1 张图: 宽 2.4 英寸
-    - 2 张图: 每张宽 1.25 英寸，单段落内并列
-    - 3 张图: 每张宽 0.85 英寸，单段落内并列
-    - 4 张图: 2x2 矩阵网格，每行严格并排 2 张 (每张 1.2 英寸)
-    """
+def insert_images_safely_into_cell(cell, img_bytes_list):
+    """智能多图排版算法：居中紧凑，不撑高表格"""
     if not img_bytes_list:
         return
     cell.text = ""
     count = len(img_bytes_list)
-    
     if count == 1:
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.line_spacing = 1.0
-        p.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.4))
-        
+        p.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.1))
     elif count == 2:
-        # 【双图水平并排】：两张图加起来 2.5 英寸，远小于单元格 3.0 英寸宽度，绝不换行
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.line_spacing = 1.0
-        
         r1 = p.add_run()
-        r1.add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(1.25))
-        p.add_run("   ") # 水平间隔空格
+        r1.add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(1.4))
+        p.add_run("  ")
         r2 = p.add_run()
-        r2.add_picture(io.BytesIO(img_bytes_list[1]), width=Inches(1.25))
-        
-    elif count == 3:
-        # 【三图水平并排】：每张 0.85 英寸，总宽 2.55 英寸，一行内整齐排列
-        p = cell.paragraphs[0]
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = 1.0
-        
-        for i, b in enumerate(img_bytes_list):
-            r = p.add_run()
-            r.add_picture(io.BytesIO(b), width=Inches(0.85))
-            if i < 2:
-                p.add_run("  ")
-                
+        r2.add_picture(io.BytesIO(img_bytes_list[1]), width=Inches(1.4))
     else:
-        # 4 张及以上：2x2 矩阵并列网格排布
         for i in range(0, count, 2):
             p = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after = Pt(1)
             p.paragraph_format.line_spacing = 1.0
-            
             r_a = p.add_run()
-            r_a.add_picture(io.BytesIO(img_bytes_list[i]), width=Inches(1.20))
+            r_a.add_picture(io.BytesIO(img_bytes_list[i]), width=Inches(1.35))
             if i + 1 < count:
-                p.add_run("   ")
+                p.add_run("  ")
                 r_b = p.add_run()
-                r_b.add_picture(io.BytesIO(img_bytes_list[i+1]), width=Inches(1.20))
+                r_b.add_picture(io.BytesIO(img_bytes_list[i+1]), width=Inches(1.35))
 
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None, ng_imgs=None):
     if hasattr(template_source, 'seek'):
@@ -613,11 +594,11 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
     replace_field_value_in_doc(doc, "Component:", comp_val)
     replace_field_value_in_doc(doc, "Sub-Component:", sub_val)
 
-    # 紧凑写入第2章内容，清除多余段落与硬分页
+    # 4. 【核心修复】：紧凑写入第2章内容并彻底清除多余空行与隐藏分页符
     prob_val = bot_data.get('Problem') or raw_row.get('LL Brief Description', '')
     write_problem_compact_and_clean_pagebreaks(doc, prob_val)
 
-    # 表格多图并列插入
+    # 5. 表格处理
     picture_inserted = False
     for table in doc.tables:
         t_header = "".join(cell.text for cell in table.rows[0].cells).lower()
@@ -627,11 +608,11 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None,
                 c_txt = cell.text.lower().replace(" ", "")
                 if ("picture" in c_txt or "defect" in c_txt or "not-ok" in c_txt) and "ok-part" not in c_txt:
                     if ng_imgs:
-                        insert_images_side_by_side_into_cell(cell, ng_imgs)
+                        insert_images_safely_into_cell(cell, ng_imgs)
                         picture_inserted = True
                 elif "ok-part" in c_txt:
                     if ok_imgs:
-                        insert_images_side_by_side_into_cell(cell, ok_imgs)
+                        insert_images_safely_into_cell(cell, ok_imgs)
 
         if "lessons" in t_header and ("measures" in t_header or "root cause" in t_header):
             lessons_rows = bot_data.get('Lessons_Rows', [])
@@ -797,7 +778,7 @@ if excel_file is not None and template_file is not None:
                     <strong>📌 闭环协同标准化作业规范：</strong><br>
                     1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
                     2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
-                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（多图自动水平并排展示）与已挂载双附件的新版邮件草稿。
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（消除冗余空白页）与已挂载双附件的新版邮件草稿。
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -929,7 +910,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 if template_file is None:
                     st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
-                    with st.spinner("正在装配表格、执行多图水平并列排版并生成邮件草稿..."):
+                    with st.spinner("正在装配表格、优化紧凑排版并生成邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                         doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_imgs, ng_imgs)
                         bio = io.BytesIO()
@@ -955,7 +936,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
-                                f"📥 下载 Word 报告 (多图已水平并排): {doc_filename}",
+                                f"📥 下载 Word 报告 (无冗余空白页): {doc_filename}",
                                 doc_bytes,
                                 doc_filename,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -1102,7 +1083,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     
                     if case_imgs:
                         st.markdown(f"🖼 **不良图片库 (Defect Pictures, 共 {len(case_imgs)} 张):**")
-                        # 看板右侧亦采用左右并排栅格渲染
                         img_cols = st.columns(min(len(case_imgs), 2))
                         for i, img_b in enumerate(case_imgs):
                             with img_cols[i % 2]:
