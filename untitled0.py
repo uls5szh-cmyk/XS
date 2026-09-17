@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Actionable High-Contrast Edition)
-- Reversed Visual Hierarchy: Pure White High-Contrast Inputs on Neutral Cards
-- Prominent Focus States for Textareas & Selectboxes (Bosch Blue Focus Ring)
-- Clean Division & Full-Row Table Click Interaction
+BOSCH | PCB Lesson Learn Quality Studio (Multi-Image Engine Edition)
+- Multi-Image Cell Extraction: Captures ALL images anchored to the record
+- Smart Word Multi-Image Layout: Auto-grid / Inline scaling (Zero layout breaks)
+- Actionable BDS 2.0 Interface: Pure white inputs, neutral cards & no misclicks
 - Exact New Email Template & Dual Attachments
 =============================================================================
 """
@@ -37,7 +37,7 @@ except ImportError:
     HAS_PLOTLY = False
 
 # -----------------------------------------------------------------------------
-# 1. 页面基本配置与人机工效视觉反转体系 (Bosch CI 2.0 Actionable Theme)
+# 1. 页面基本配置与人机工效视觉反转体系 (Bosch Corporate Identity 2.0)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Bosch | PCB Lesson Learn Quality Studio",
@@ -74,7 +74,7 @@ BOSCH_UI_STYLE = """
         margin-bottom: 20px;
     }
     
-    /* 弱化卡片背景为柔和中性灰，杜绝诱导误点击 */
+    /* 柔和中性灰卡片 */
     .bds-step-card {
         background: var(--bosch-card-bg);
         border: 1px solid var(--bosch-border);
@@ -107,7 +107,7 @@ BOSCH_UI_STYLE = """
         margin: 0;
     }
     
-    /* 【核心修正】：让所有输入框、选择框高亮突出、纯白底色、清晰立体 */
+    /* 输入控件高对比度纯白凸起 */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stTextArea textarea {
         background-color: #FFFFFF !important;
         border: 1.5px solid #94A3B8 !important;
@@ -117,7 +117,6 @@ BOSCH_UI_STYLE = """
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
     }
     
-    /* 鼠标悬停与获得光标时的博世深蓝高光 */
     .stTextInput input:hover, .stTextArea textarea:hover, .stSelectbox div[data-baseweb="select"] > div:hover {
         border-color: var(--bosch-light-blue) !important;
     }
@@ -126,14 +125,12 @@ BOSCH_UI_STYLE = """
         box-shadow: 0 0 0 3px rgba(0, 86, 145, 0.18) !important;
     }
     
-    /* 标签加粗 */
     .stWidgetLabel p {
         font-weight: 700 !important;
         color: #1E293B !important;
         font-size: 0.92rem !important;
     }
     
-    /* 真实非误导细分隔线 */
     .clean-divider {
         border: 0;
         height: 1px;
@@ -141,7 +138,6 @@ BOSCH_UI_STYLE = """
         margin: 20px 0;
     }
     
-    /* 指引面板 */
     .guide-box {
         background: #FFFFFF;
         border: 1px solid #CBD5E1;
@@ -153,7 +149,6 @@ BOSCH_UI_STYLE = """
         color: #334155;
     }
     
-    /* KPI 仪表卡片 */
     .kpi-card {
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
@@ -283,7 +278,7 @@ app_mode = st.radio(
 st.markdown('<hr class="clean-divider">', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 4. 辅助数据处理与图片提取函数
+# 4. 辅助数据处理与【多图片提取引擎】
 # -----------------------------------------------------------------------------
 
 def load_supplier_emails(file_source):
@@ -317,7 +312,11 @@ def load_supplier_emails(file_source):
         pass
     return {}
 
-def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
+def get_multiple_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
+    """
+    【核心：支持单元格多张图片提取】
+    返回：ok_imgs (list), ng_imgs (list)
+    """
     try:
         if hasattr(file_source, 'seek'): file_source.seek(0)
         wb = openpyxl.load_workbook(file_source, data_only=True)
@@ -333,8 +332,8 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
                 if 'ok picture' in val_str: col_ok = col_idx - 1
                 
         excel_target_row = header_idx + 1 + target_row_idx
-        ok_img = None
-        ng_img = None
+        ok_imgs = []
+        ng_imgs = []
         
         for img in getattr(ws, '_images', []):
             try:
@@ -342,15 +341,15 @@ def get_images_for_row(file_source, sheet_name, header_idx, target_row_idx):
                 c = img.anchor._from.col
                 if r == excel_target_row:
                     if c == col_ng or (col_ng != -1 and abs(c - col_ng) <= 1):
-                        ng_img = img._data()
+                        ng_imgs.append(img._data())
                     elif c == col_ok:
-                        ok_img = img._data()
+                        ok_imgs.append(img._data())
             except Exception:
                 pass
                 
-        return ok_img, ng_img
+        return ok_imgs, ng_imgs
     except Exception as e:
-        return None, None
+        return [], []
 
 def load_excel_robust(file_source):
     if hasattr(file_source, 'seek'): file_source.seek(0)
@@ -440,7 +439,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板并置入紧凑图片
+# 5. 精准装配 Word 模板并置入【智能多图排版布局】
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -500,7 +499,57 @@ def insert_content_under_heading(doc, heading_kw, text_value):
             r.font.bold = False
             return
 
-def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, ng_img=None):
+def insert_images_safely_into_cell(cell, img_bytes_list):
+    """
+    【智能多图排版算法】：
+    - 1 张图：宽度 2.2 英寸居中
+    - 2 张图：并排在一行，每张宽度 1.45 英寸 (不增加表格高度)
+    - 3+ 张图：两两换行网格排布，每张宽度 1.4 英寸
+    """
+    if not img_bytes_list:
+        return
+    cell.text = ""
+    
+    count = len(img_bytes_list)
+    if count == 1:
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+        p.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.2))
+    elif count == 2:
+        # 并排排列在一行
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+        r1 = p.add_run()
+        r1.add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(1.42))
+        p.add_run("  ") # 间隔
+        r2 = p.add_run()
+        r2.add_picture(io.BytesIO(img_bytes_list[1]), width=Inches(1.42))
+    else:
+        # 3张及以上：两两分行网格呈现
+        for i in range(0, count, 2):
+            if i == 0:
+                p = cell.paragraphs[0]
+            else:
+                p = cell.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.line_spacing = 1.0
+            
+            r_a = p.add_run()
+            r_a.add_picture(io.BytesIO(img_bytes_list[i]), width=Inches(1.38))
+            if i + 1 < count:
+                p.add_run("  ")
+                r_b = p.add_run()
+                r_b.add_picture(io.BytesIO(img_bytes_list[i+1]), width=Inches(1.38))
+
+def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None, ng_imgs=None):
     if hasattr(template_source, 'seek'):
         template_source.seek(0)
     doc = docx.Document(template_source)
@@ -542,24 +591,12 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
             for cell in row.cells:
                 c_txt = cell.text.lower().replace(" ", "")
                 if ("picture" in c_txt or "defect" in c_txt or "not-ok" in c_txt) and "ok-part" not in c_txt:
-                    if ng_img:
-                        cell.text = ""
-                        p = cell.paragraphs[0]
-                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        p.paragraph_format.space_before = Pt(0)
-                        p.paragraph_format.space_after = Pt(0)
-                        p.paragraph_format.line_spacing = 1.0
-                        p.add_run().add_picture(io.BytesIO(ng_img), width=Inches(1.85))
+                    if ng_imgs:
+                        insert_images_safely_into_cell(cell, ng_imgs)
                         picture_inserted = True
                 elif "ok-part" in c_txt:
-                    if ok_img:
-                        cell.text = ""
-                        p = cell.paragraphs[0]
-                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        p.paragraph_format.space_before = Pt(0)
-                        p.paragraph_format.space_after = Pt(0)
-                        p.paragraph_format.line_spacing = 1.0
-                        p.add_run().add_picture(io.BytesIO(ok_img), width=Inches(1.85))
+                    if ok_imgs:
+                        insert_images_safely_into_cell(cell, ok_imgs)
 
         if "lessons" in t_header and ("measures" in t_header or "root cause" in t_header):
             lessons_rows = bot_data.get('Lessons_Rows', [])
@@ -588,13 +625,15 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
                 if len(row.cells) >= 2 and r_i in w_map:
                     set_cell_formatted_text(row.cells[1], w_map[r_i])
 
-    if not picture_inserted and ng_img:
+    # 兜底普通段落处理
+    if not picture_inserted and ng_imgs:
         for p in doc.paragraphs:
             p_txt_clean = p.text.lower().replace(" ", "")
             if "picture" in p_txt_clean and len(p_txt_clean) < 40:
                 p.text = ""
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                p.add_run().add_picture(io.BytesIO(ng_img), width=Inches(1.85))
+                for b in ng_imgs:
+                    p.add_run().add_picture(io.BytesIO(b), width=Inches(2.0))
                 break
 
     return doc
@@ -717,7 +756,7 @@ if excel_file is not None and template_file is not None:
             df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
-        # 模式一：FEBER 报告生成与邮件协同（反转高对比操作台）
+        # 模式一：FEBER 报告生成与邮件协同
         # =========================================================================
         if app_mode == "📑 FEBER 报告生成与邮件协同":
             feedback_bytes = None
@@ -734,7 +773,7 @@ if excel_file is not None and template_file is not None:
                     <strong>📌 闭环协同标准化作业规范：</strong><br>
                     1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
                     2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
-                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告与已挂载双附件的新版邮件草稿。
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（支持多图自动紧凑排版）与已挂载双附件的新版邮件草稿。
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -759,7 +798,7 @@ if excel_file is not None and template_file is not None:
             st.markdown('</div>', unsafe_allow_html=True)
             
             selected_row = gen_df.loc[selected_record_idx]
-            ok_img, ng_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row.name)
+            ok_imgs, ng_imgs = get_multiple_images_for_row(excel_file, sheet_name, header_idx, selected_row.name)
             
             raw_facts_list = []
             for col_name in df.columns:
@@ -866,9 +905,9 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 if template_file is None:
                     st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
-                    with st.spinner("正在装配表格并生成双附件邮件草稿..."):
+                    with st.spinner("正在装配表格、智能流式排版多图并生成邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
-                        doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_img, ng_img)
+                        doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_imgs, ng_imgs)
                         bio = io.BytesIO()
                         doc.save(bio)
                         doc_bytes = bio.getvalue()
@@ -892,7 +931,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
-                                f"📥 下载 Word 报告: {doc_filename}",
+                                f"📥 下载 Word 报告 (多图已紧凑排版): {doc_filename}",
                                 doc_bytes,
                                 doc_filename,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -909,10 +948,9 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板 (Split Matrix View)
+        # 模式二：高阶质量全景与闭环看板 (多图画廊检视)
         # =========================================================================
         else:
-            # 1. 核心 KPI 动态指标栏
             total_cases = len(df)
             completed_cases = len(df[df['Normalized_Status'] == 'Completed'])
             pending_cases = total_cases - completed_cases
@@ -950,7 +988,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 2. 过滤检索栏
             f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 2, 2, 2.5])
             with f_col1:
                 status_filter = st.selectbox("📌 闭环状态:", options=["全部 (All)", "已完成 (Closed)", "待处理 (Open)"])
@@ -969,7 +1006,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with f_col4:
                 search_q = st.text_input("🔍 关键字检索:", placeholder="输入编号/原因/失效模式...")
 
-            # 过滤逻辑
             view_df = df.copy()
             if status_filter == "已完成 (Closed)":
                 view_df = view_df[view_df['Normalized_Status'] == 'Completed']
@@ -985,10 +1021,8 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 
             st.write("")
 
-            # 3. 双屏联动分面矩阵视图 (左侧纯点击表格 + 右侧焦点检视)
             col_list_view, col_detail_view = st.columns([1.5, 1.5])
             
-            # 整理列表状态
             view_df['闭环状态'] = view_df['Normalized_Status'].apply(lambda x: '🟢 已完成' if x == 'Completed' else '🔴 进行中')
             
             table_disp_cols = [
@@ -1004,7 +1038,6 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with col_list_view:
                 st.markdown(f"##### 📋 经验库清单 (共 {len(view_df)} 条)")
                 
-                # 全行无阻点击
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -1024,7 +1057,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 st.markdown("##### 🔬 经验卡片详情")
                 if selected_row_data is not None:
                     focus_status = selected_row_data.get('Normalized_Status', 'Pending')
-                    _, case_img = get_images_for_row(excel_file, sheet_name, header_idx, selected_row_data.name)
+                    _, case_imgs = get_multiple_images_for_row(excel_file, sheet_name, header_idx, selected_row_data.name)
                     
                     status_badge = '<span class="badge-completed">🟢 已完成</span>' if focus_status == 'Completed' else '<span class="badge-pending">🔴 进行中</span>'
                     
@@ -1043,15 +1076,16 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     
                     st.write("")
                     
-                    # 紧凑型高清图片视口（固定 280px 居中）
-                    if case_img:
-                        st.markdown("🖼 **不良图片 (Defect Picture):**")
-                        c_img_space1, c_img_center, c_img_space2 = st.columns([1, 2, 1])
-                        with c_img_center:
-                            st.image(case_img, width=280)
-                            
-                        with st.expander("🔍 查看 1:1 原始大图", expanded=False):
-                            st.image(case_img, use_container_width=True)
+                    # 🖼️ 支持多张不良图片画廊呈现
+                    if case_imgs:
+                        st.markdown(f"🖼 **不良图片库 (Defect Pictures, 共 {len(case_imgs)} 张):**")
+                        # 双列网格紧凑缩略图展示
+                        img_cols = st.columns(min(len(case_imgs), 2))
+                        for i, img_b in enumerate(case_imgs):
+                            with img_cols[i % 2]:
+                                st.image(img_b, width=220, caption=f"实物图 #{i+1}")
+                                with st.expander(f"🔍 放大原图 #{i+1}", expanded=False):
+                                    st.image(img_b, use_container_width=True)
                     else:
                         st.markdown("""
                         <div style="height:100px; background:#FFFFFF; border:1.5px dashed #CBD5E1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
