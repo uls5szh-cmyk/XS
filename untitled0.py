@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Dynamic Blue Image Matrix Edition)
-- Dynamic Blue Header Containers: Auto-creates labeled blue boxes per image
-- Intelligent Side-by-Side Nested Grid: Perfectly scaled columns with zero overflow
+BOSCH | PCB Lesson Learn Quality Studio (Independent Blue-Frame Matrix Edition)
+- Strict Horizontal & Vertical Centering: Zero right-shift, zero misalignment
+- Independent Blue-Header Card Frame per image (N images = N parallel frames)
+- Protected Boundaries: Each image sits safely in its own cell container
 - Actionable High-Contrast UI & Dual Attachment Outlook Draft
 =============================================================================
 """
@@ -431,7 +432,7 @@ def parse_bot_feber_response(bot_text):
     return parsed
 
 # -----------------------------------------------------------------------------
-# 5. 精准装配 Word 模板核心函数 (动态蓝底多图矩阵容器)
+# 5. 精准装配 Word 模板核心函数 (彻底居中独立蓝底卡片相框矩阵)
 # -----------------------------------------------------------------------------
 
 def set_cell_formatted_text(cell, text):
@@ -517,67 +518,93 @@ def write_problem_compact_and_clean_pagebreaks(doc, text_value):
                 scan_idx += 1
 
 def set_cell_background_color(cell, hex_color):
-    """为指定单元格设置纯色底色 (如博世深蓝 005691)"""
+    """为指定单元格设置底色 (如博世深蓝 005691)"""
     tcPr = cell._tc.get_or_add_tcPr()
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
     tcPr.append(shd)
 
+def set_cell_border_clean(cell):
+    """设置整洁精细的细边框"""
+    tcPr = cell._tc.get_or_add_tcPr()
+    borders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:left w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="005691"/><w:right w:val="single" w:sz="4" w:space="0" w:color="005691"/></w:tcBorders>')
+    tcPr.append(borders)
+
 def insert_dynamic_blue_boxed_images(cell, img_bytes_list):
     """
-    【核心创新】：动态并列深蓝标题框多图矩阵
-    - 根据图片数量 N，在单元格内动态生成 N 列 x 2 行的精细化嵌套微型表格；
-    - 上方：深蓝背景 (#005691) + 白色加粗标题编号 (Picture #1: Product – Defect)；
-    - 下方：自适应并列水平放置实物照片，规整对称，绝不换页。
+    【彻底绝对居中 + 独立并列蓝底框排版引擎】
+    - 清除原有大框样式，解除任何右缩进限制；
+    - 根据图片数量 N，创建并列且等宽的 N 列独立微型相框；
+    - 每个框顶部为【博世深蓝底色 + 白色编号】，下方为【居中自适应图片】；
+    - 赋予底层 w:jc=center 属性，100% 绝对居中，绝不偏右！
     """
     if not img_bytes_list:
         return
         
     cell.text = ""
+    # 清空可能存在的缩进
+    cell.paragraphs[0].paragraph_format.left_indent = Inches(0)
+    cell.paragraphs[0].paragraph_format.right_indent = Inches(0)
+    
     count = len(img_bytes_list)
     
-    # 1. 单张图片：保持标准经典博世深蓝框
+    # 1. 只有 1 张图片的情况：单框标准居中
     if count == 1:
-        # 恢复原标题
-        p_title = cell.paragraphs[0]
-        p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_title.paragraph_format.space_before = Pt(2)
-        p_title.paragraph_format.space_after = Pt(4)
-        set_cell_background_color(cell, "005691") # 经典深蓝
+        set_cell_background_color(cell, "FFFFFF")
+        sub_tbl = cell.add_table(rows=2, cols=1)
+        sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
-        r_t = p_title.add_run("Picture – Product – Defect")
+        # 强制表格居中
+        tblPr = sub_tbl._tbl.tblPr
+        tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
+        
+        c_h = sub_tbl.cell(0, 0)
+        c_h.width = Inches(2.6)
+        set_cell_background_color(c_h, "005691")
+        p_h = c_h.paragraphs[0]
+        p_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_h.paragraph_format.space_before = Pt(2)
+        p_h.paragraph_format.space_after = Pt(2)
+        r_t = p_h.add_run("Picture – Product – Defect")
         r_t.font.name = 'Arial'
-        r_t.font.size = Pt(9.5)
+        r_t.font.size = Pt(9.0)
         r_t.font.bold = True
         r_t.font.color.rgb = RGBColor(255, 255, 255)
         
-        # 插入单张大图
-        p_img = cell.add_paragraph()
-        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img.paragraph_format.space_before = Pt(0)
-        p_img.paragraph_format.space_after = Pt(0)
-        p_img.paragraph_format.line_spacing = 1.0
-        p_img.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.4))
+        c_b = sub_tbl.cell(1, 0)
+        c_b.width = Inches(2.6)
+        set_cell_background_color(c_b, "F8FAFC")
+        set_cell_border_clean(c_b)
+        p_b = c_b.paragraphs[0]
+        p_b.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_b.paragraph_format.space_before = Pt(2)
+        p_b.paragraph_format.space_after = Pt(2)
+        p_b.paragraph_format.line_spacing = 1.0
+        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[0]), width=Inches(2.4))
         return
 
-    # 2. 多张图片（2张、3张及以上）：创建 N 列 x 2 行的动态嵌套微型表格
-    # 清除原有单元格蓝色，由子表格各列自主呈现深蓝标题框
+    # 2. 多张图片的情况：并列生成 N 个相互独立、等宽的专属蓝底相框
     set_cell_background_color(cell, "FFFFFF")
+    sub_tbl = cell.add_table(rows=2, cols=count)
+    sub_tbl.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    sub_table = cell.add_table(rows=2, cols=count)
-    sub_table.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # 强制整个子表格绝对居中对齐，绝不往右偏
+    tblPr = sub_tbl._tbl.tblPr
+    tblPr.append(parse_xml(f'<w:jc {nsdecls("w")} w:val="center"/>'))
     
-    # 计算每列宽度 (总可用宽约 3.1 英寸)
-    col_width_in = 3.0 / count
-    img_render_width = Inches(col_width_in * 0.92) # 留有微间隙
+    # 计算每个独立框的绝对宽度与图片适配合适尺寸
+    total_avail_width = 3.1
+    single_box_width = total_avail_width / count
+    render_img_w = Inches(single_box_width * 0.88)
     
     for i in range(count):
-        # A. 上方第 0 行：深蓝标题框 + 编号
-        c_header = sub_table.cell(0, i)
-        set_cell_background_color(c_header, "005691") # 经典深蓝底色
+        # A. 顶部独立深蓝标题框 (带编号)
+        c_header = sub_tbl.cell(0, i)
+        c_header.width = Inches(single_box_width)
+        set_cell_background_color(c_header, "005691") # 独立深蓝
         
         p_h = c_header.paragraphs[0]
         p_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_h.paragraph_format.space_before = Pt(1)
+        p_h.paragraph_format.space_before = Pt(2)
         p_h.paragraph_format.space_after = Pt(2)
         
         r_lbl = p_h.add_run(f"Picture #{i+1}")
@@ -586,16 +613,20 @@ def insert_dynamic_blue_boxed_images(cell, img_bytes_list):
         r_lbl.font.bold = True
         r_lbl.font.color.rgb = RGBColor(255, 255, 255) # 纯白文字
         
-        # B. 下方第 1 行：实物图片
-        c_body = sub_table.cell(1, i)
-        set_cell_background_color(c_body, "F8FAFC") # 浅色底衬
+        # B. 底部独立图片框 (浅灰底托 + 精细蓝框 + 绝对几何居中)
+        c_body = sub_tbl.cell(1, i)
+        c_body.width = Inches(single_box_width)
+        set_cell_background_color(c_body, "F8FAFC")
+        set_cell_border_clean(c_body)
+        
         p_b = c_body.paragraphs[0]
         p_b.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_b.paragraph_format.space_before = Pt(2)
         p_b.paragraph_format.space_after = Pt(2)
         p_b.paragraph_format.line_spacing = 1.0
         
-        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[i]), width=img_render_width)
+        # 图片安全水平居中置入
+        p_b.add_run().add_picture(io.BytesIO(img_bytes_list[i]), width=render_img_w)
 
 def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_imgs=None, ng_imgs=None):
     if hasattr(template_source, 'seek'):
@@ -812,7 +843,7 @@ if excel_file is not None and template_file is not None:
                     <strong>📌 闭环协同标准化作业规范：</strong><br>
                     1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
                     2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
-                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（多图自动智能分列深蓝标题框排版）与已挂载双附件的新版邮件草稿。
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告（多图独立专属蓝底框排版）与已挂载双附件的新版邮件草稿。
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -944,7 +975,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 if template_file is None:
                     st.error("❌ 未检测到 Word 模板，请在侧边栏确认路径。")
                 else:
-                    with st.spinner("正在装配表格、智能生成多图并列深蓝标题框并生成邮件草稿..."):
+                    with st.spinner("正在装配表格、建立专属居中蓝底框并生成邮件草稿..."):
                         bot_data = parse_bot_feber_response(bot_reply) if bot_reply.strip() else {}
                         doc = populate_docx_exact_tables(template_file, bot_data, selected_row, ok_imgs, ng_imgs)
                         bio = io.BytesIO()
@@ -970,7 +1001,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         c_d1, c_d2 = st.columns(2)
                         with c_d1:
                             st.download_button(
-                                f"📥 下载 Word 报告 (多图已带蓝框并排): {doc_filename}",
+                                f"📥 下载 Word 报告 (多图已专属居中蓝框并排): {doc_filename}",
                                 doc_bytes,
                                 doc_filename,
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
