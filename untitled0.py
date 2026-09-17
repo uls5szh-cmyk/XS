@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Refined Ergonomic Edition)
-- High-Contrast Card Layers & True Non-Deceptive Dividers
-- Bold Step Number Badges & Optional Side Inspection Guide
-- Seamless Full-Row Click Inspection (No Checkbox Aiming)
+BOSCH | PCB Lesson Learn Quality Studio (Actionable High-Contrast Edition)
+- Reversed Visual Hierarchy: Pure White High-Contrast Inputs on Neutral Cards
+- Prominent Focus States for Textareas & Selectboxes (Bosch Blue Focus Ring)
+- Clean Division & Full-Row Table Click Interaction
 - Exact New Email Template & Dual Attachments
 =============================================================================
 """
@@ -37,7 +37,7 @@ except ImportError:
     HAS_PLOTLY = False
 
 # -----------------------------------------------------------------------------
-# 1. 页面基本配置与博世高端工业视觉体系 (Bosch Corporate Identity 2.0)
+# 1. 页面基本配置与人机工效视觉反转体系 (Bosch CI 2.0 Actionable Theme)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Bosch | PCB Lesson Learn Quality Studio",
@@ -55,10 +55,10 @@ BOSCH_UI_STYLE = """
         --bosch-green: #78BE20;
         --bosch-dark-gray: #1C2B39;
         --bosch-gray: #525F6B;
-        --bosch-bg: #EEF2F6;
-        --bosch-card: #FFFFFF;
-        --bosch-input-bg: #F8FAFC;
+        --bosch-bg: #EAEFF4;
+        --bosch-card-bg: #F4F6F8;
         --bosch-border: #CBD5E1;
+        --bosch-active-border: #005691;
     }
     
     .stApp { 
@@ -74,33 +74,31 @@ BOSCH_UI_STYLE = """
         margin-bottom: 20px;
     }
     
-    /* 强对比度步骤卡片 */
+    /* 弱化卡片背景为柔和中性灰，杜绝诱导误点击 */
     .bds-step-card {
-        background: var(--bosch-card);
+        background: var(--bosch-card-bg);
         border: 1px solid var(--bosch-border);
         border-radius: 8px;
         padding: 22px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
     }
     
-    /* 大号醒目卡片序号引导徽章 */
+    /* 步骤标题 */
     .step-header {
         display: flex;
         align-items: center;
-        margin-bottom: 16px;
-        border-bottom: 1px solid #E2E8F0;
+        margin-bottom: 14px;
+        border-bottom: 1px solid #D8E0E8;
         padding-bottom: 10px;
     }
     .step-number {
         background: var(--bosch-blue);
         color: #FFFFFF;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 800;
-        padding: 4px 14px;
-        border-radius: 6px;
+        padding: 4px 12px;
+        border-radius: 4px;
         margin-right: 12px;
-        letter-spacing: 0.5px;
     }
     .step-title {
         color: #005691;
@@ -109,16 +107,33 @@ BOSCH_UI_STYLE = """
         margin: 0;
     }
     
-    /* 操作底槽（突出输入区域） */
-    .input-slot {
-        background: var(--bosch-input-bg);
-        border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        padding: 14px;
-        margin-top: 8px;
+    /* 【核心修正】：让所有输入框、选择框高亮突出、纯白底色、清晰立体 */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stTextArea textarea {
+        background-color: #FFFFFF !important;
+        border: 1.5px solid #94A3B8 !important;
+        border-radius: 6px !important;
+        color: #0F172A !important;
+        font-size: 0.95rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
     }
     
-    /* 真实非误导分隔线 */
+    /* 鼠标悬停与获得光标时的博世深蓝高光 */
+    .stTextInput input:hover, .stTextArea textarea:hover, .stSelectbox div[data-baseweb="select"] > div:hover {
+        border-color: var(--bosch-light-blue) !important;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
+        border-color: var(--bosch-blue) !important;
+        box-shadow: 0 0 0 3px rgba(0, 86, 145, 0.18) !important;
+    }
+    
+    /* 标签加粗 */
+    .stWidgetLabel p {
+        font-weight: 700 !important;
+        color: #1E293B !important;
+        font-size: 0.92rem !important;
+    }
+    
+    /* 真实非误导细分隔线 */
     .clean-divider {
         border: 0;
         height: 1px;
@@ -126,14 +141,13 @@ BOSCH_UI_STYLE = """
         margin: 20px 0;
     }
     
-    /* 右侧帮助指引面板 */
+    /* 指引面板 */
     .guide-box {
         background: #FFFFFF;
         border: 1px solid #CBD5E1;
-        border-top: 4px solid var(--bosch-blue);
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
+        border-left: 4px solid var(--bosch-blue);
+        border-radius: 6px;
+        padding: 14px 18px;
         font-size: 0.88rem;
         line-height: 1.6;
         color: #334155;
@@ -146,18 +160,18 @@ BOSCH_UI_STYLE = """
         border-radius: 8px;
         padding: 14px 18px;
         border-top: 4px solid var(--bosch-blue);
-        box-shadow: 0 4px 10px rgba(0, 40, 80, 0.03);
+        box-shadow: 0 2px 6px rgba(0, 40, 80, 0.03);
     }
     .kpi-title { font-size: 0.8rem; color: #525F6B; font-weight: 600; text-transform: uppercase; }
     .kpi-value { font-size: 1.8rem; color: #005691; font-weight: 700; margin-top: 2px; }
     
     .inspector-panel {
         background: #FFFFFF;
-        border: 1px solid var(--bosch-border);
-        border-left: 4px solid var(--bosch-blue);
+        border: 1.5px solid #94A3B8;
+        border-left: 5px solid var(--bosch-blue);
         border-radius: 8px;
         padding: 20px;
-        box-shadow: 0 4px 14px rgba(0, 40, 80, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 40, 80, 0.04);
     }
     
     .badge-completed {
@@ -703,7 +717,7 @@ if excel_file is not None and template_file is not None:
             df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
-        # 模式一：FEBER 报告生成与邮件协同（加入增强对比度 + 醒目步骤序号 + 可选指引）
+        # 模式一：FEBER 报告生成与邮件协同（反转高对比操作台）
         # =========================================================================
         if app_mode == "📑 FEBER 报告生成与邮件协同":
             feedback_bytes = None
@@ -714,14 +728,13 @@ if excel_file is not None and template_file is not None:
                     
             gen_df = df.copy()
             
-            # 顶部增加可选的操作指引分栏
             with st.expander("📖 查看 FEBER 协同与邮件分发操作规范 (Operation Guide)", expanded=False):
                 st.markdown("""
                 <div class="guide-box">
                     <strong>📌 闭环协同标准化作业规范：</strong><br>
                     1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
                     2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
-                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告与已预设好收件人、双附件的 Outlook 邮件草稿。
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告与已挂载双附件的新版邮件草稿。
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -734,12 +747,12 @@ if excel_file is not None and template_file is not None:
                 </div>
             """, unsafe_allow_html=True)
             
-            search_kw = st.text_input("🔍 关键字搜索过滤 (序列号 / 供应商 / 失效模式):", placeholder="输入关键字实时过滤台账...")
+            search_kw = st.text_input("🔍 搜索记录 (序列号 / 供应商 / 失效模式):", placeholder="输入关键字快速过滤...")
             if search_kw:
                 gen_df = gen_df[gen_df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
                 
             selected_record_idx = st.selectbox(
-                "👉 请选择目标记录 (Target Record)：",
+                "👉 目标台账记录 (Target Record):",
                 options=gen_df.index,
                 format_func=lambda x: f"[{gen_df.loc[x, serial_no_col]}] {gen_df.loc[x, 'Failure Mode']} - {gen_df.loc[x, 'Project/Part name']}"
             )
@@ -818,7 +831,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             
             c_p, c_b = st.columns([3.2, 1])
             with c_p:
-                st.text_area("📋 完整工程 Prompt (点击右上角图标一键复制):", prompt_content, height=220)
+                st.text_area("📋 完整工程 Prompt (纯白高对比高光文本域，点击右上角复制):", prompt_content, height=220)
             with c_b:
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
@@ -838,7 +851,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                 bot_reply = st.text_area(
                     "📥 粘贴 M-PU Bot 润色后的完整回复：",
                     height=220,
-                    placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons, 4. Potentially affected 的完整文本..."
+                    placeholder="在此粘贴包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons, 4. Potentially affected 的完整文本..."
                 )
             with col_sup:
                 selected_sups = st.multiselect("👥 选择收件供应商 (自动解析邮箱):", options=list(supplier_dict.keys()))
@@ -896,7 +909,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板 (全行点击无阻联动 + 紧凑视图)
+        # 模式二：高阶质量全景与闭环看板 (Split Matrix View)
         # =========================================================================
         else:
             # 1. 核心 KPI 动态指标栏
@@ -991,7 +1004,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with col_list_view:
                 st.markdown(f"##### 📋 经验库清单 (共 {len(view_df)} 条)")
                 
-                # 【全行无阻点击】：点击行内任意文字即可选中
+                # 全行无阻点击
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -1041,7 +1054,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                             st.image(case_img, use_container_width=True)
                     else:
                         st.markdown("""
-                        <div style="height:100px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
+                        <div style="height:100px; background:#FFFFFF; border:1.5px dashed #CBD5E1; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:0.85rem;">
                             暂无实物图片
                         </div>
                         """, unsafe_allow_html=True)
