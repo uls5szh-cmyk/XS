@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
-BOSCH | PCB Lesson Learn Quality Studio (Exact New Email Template Edition)
-- Exact Match with New Email Body & Subject: M/PQR-AP LL | {LL Serials No} | Title {Failure Mode}
-- Dual Attachments: Generated Word Report (Att 1) + Feedback Excel (Att 2)
-- Compact Defect Image Viewport & Split Matrix Dashboard
+BOSCH | PCB Lesson Learn Quality Studio (Refined Ergonomic Edition)
+- High-Contrast Card Layers & True Non-Deceptive Dividers
+- Bold Step Number Badges & Optional Side Inspection Guide
+- Seamless Full-Row Click Inspection (No Checkbox Aiming)
+- Exact New Email Template & Dual Attachments
 =============================================================================
 """
 
@@ -54,12 +55,18 @@ BOSCH_UI_STYLE = """
         --bosch-green: #78BE20;
         --bosch-dark-gray: #1C2B39;
         --bosch-gray: #525F6B;
-        --bosch-bg: #F4F6F8;
+        --bosch-bg: #EEF2F6;
         --bosch-card: #FFFFFF;
-        --bosch-border: #DDE3EA;
+        --bosch-input-bg: #F8FAFC;
+        --bosch-border: #CBD5E1;
     }
-    .stApp { background-color: var(--bosch-bg); font-family: 'Arial', sans-serif; }
     
+    .stApp { 
+        background-color: var(--bosch-bg); 
+        font-family: 'Segoe UI', 'Arial', sans-serif; 
+    }
+    
+    /* 顶部彩条 */
     .bosch-top-bar {
         height: 6px;
         background: linear-gradient(90deg, #E20015 0%, #E20015 25%, #005691 25%, #005691 65%, #007BC0 65%, #007BC0 100%);
@@ -67,15 +74,72 @@ BOSCH_UI_STYLE = """
         margin-bottom: 20px;
     }
     
-    .bds-card {
+    /* 强对比度步骤卡片 */
+    .bds-step-card {
         background: var(--bosch-card);
         border: 1px solid var(--bosch-border);
         border-radius: 8px;
-        padding: 18px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
+        padding: 22px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
     }
     
+    /* 大号醒目卡片序号引导徽章 */
+    .step-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #E2E8F0;
+        padding-bottom: 10px;
+    }
+    .step-number {
+        background: var(--bosch-blue);
+        color: #FFFFFF;
+        font-size: 0.95rem;
+        font-weight: 800;
+        padding: 4px 14px;
+        border-radius: 6px;
+        margin-right: 12px;
+        letter-spacing: 0.5px;
+    }
+    .step-title {
+        color: #005691;
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    /* 操作底槽（突出输入区域） */
+    .input-slot {
+        background: var(--bosch-input-bg);
+        border: 1px solid #E2E8F0;
+        border-radius: 6px;
+        padding: 14px;
+        margin-top: 8px;
+    }
+    
+    /* 真实非误导分隔线 */
+    .clean-divider {
+        border: 0;
+        height: 1px;
+        background: #CBD5E1;
+        margin: 20px 0;
+    }
+    
+    /* 右侧帮助指引面板 */
+    .guide-box {
+        background: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        border-top: 4px solid var(--bosch-blue);
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0, 40, 80, 0.04);
+        font-size: 0.88rem;
+        line-height: 1.6;
+        color: #334155;
+    }
+    
+    /* KPI 仪表卡片 */
     .kpi-card {
         background: #FFFFFF;
         border: 1px solid var(--bosch-border);
@@ -94,17 +158,6 @@ BOSCH_UI_STYLE = """
         border-radius: 8px;
         padding: 20px;
         box-shadow: 0 4px 14px rgba(0, 40, 80, 0.05);
-    }
-    
-    .bds-step-badge {
-        display: inline-block;
-        background: var(--bosch-blue);
-        color: #FFFFFF;
-        font-size: 0.8rem;
-        font-weight: 700;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin-bottom: 10px;
     }
     
     .badge-completed {
@@ -213,7 +266,7 @@ app_mode = st.radio(
     horizontal=True
 )
 
-st.write("---")
+st.markdown('<hr class="clean-divider">', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
 # 4. 辅助数据处理与图片提取函数
@@ -533,19 +586,12 @@ def populate_docx_exact_tables(template_source, bot_data, raw_row, ok_img=None, 
     return doc
 
 # -----------------------------------------------------------------------------
-# 6. 【核心重构】：生成全新的标准邮件模板并精准替换主题与正文变量
+# 6. 生成新版邮件模板 (双附件 + 动态变量替换)
 # -----------------------------------------------------------------------------
 
 def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_filename="LL_Template.docx", feedback_bytes=None, feedback_filename="LL Feedback table_Supplier version_V1.xlsx"):
-    """
-    【100% 精确映射全新邮件内容与主题】
-    - 主题: M/PQR-AP LL | {LL Serials No} | Title {Failure Mode} (彻底消除 LL-xxxx-xx 占位符)
-    - 正文: 采用用户指定的全新模板，并将 (Failure Mode) 替换为真实的 Failure Mode
-    - 附件: Attachment 1 (Word 报告) + Attachment 2 (Excel 反馈表)
-    """
     serial_no_val = str(row_data.get('LL Serials No', '')).strip()
     if not serial_no_val or serial_no_val in ['nan', 'None']:
-        # 兼容其他列名
         for k in row_data.keys():
             if 'serial' in str(k).lower():
                 serial_no_val = str(row_data[k]).strip()
@@ -557,15 +603,13 @@ def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_
     if failure_mode_val in ['nan', 'None']:
         failure_mode_val = "*****"
         
-    # 【主题严格替换】：绝不再出现 'LL-xxxx-xx'
     subject = f"M/PQR-AP LL | {serial_no_val} | Title {failure_mode_val}"
     
-    # 【正文严格采用您的全新邮件模板】
     html_body = f"""
     <html>
     <head>
         <style>
-            body {{ font-family: 'Arial', sans-serif; font-size: 10.5pt; line-height: 1.6; color: #333333; }}
+            body {{ font-family: 'Segoe UI', 'Arial', sans-serif; font-size: 10.5pt; line-height: 1.6; color: #333333; }}
             .red-bold {{ color: #E20015; font-weight: bold; }}
             ul {{ margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }}
             li {{ margin-bottom: 8px; }}
@@ -582,7 +626,8 @@ def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_
         <p>If you have any question about this lesson learn, please contact us freely.</p>
         <br>
         <p>Best regards,</p>
-        <p><strong>Purchasing Quality Region Asia Pacific Team</strong></p>
+        <p><strong>Purchasing Quality Region Asia Pacific Team</strong><br>
+        Robert Bosch GmbH</p>
     </body>
     </html>
     """
@@ -591,13 +636,12 @@ def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_
     msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = 'Sunny.LIU3@cn.bosch.com'
     msg['To'] = to_emails
-    msg.add_header('X-Unsent', '1') # 草稿可编辑模式
+    msg.add_header('X-Unsent', '1')
     
     alt_part = MIMEMultipart('alternative')
     alt_part.attach(MIMEText(html_body, 'html', 'utf-8'))
     msg.attach(alt_part)
     
-    # 附件 1：Word 报告 (attachment 1)
     if doc_bytes:
         part_doc = MIMEBase('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document')
         part_doc.set_payload(doc_bytes)
@@ -605,7 +649,6 @@ def build_new_email_dual_attachment(row_data, to_emails="", doc_bytes=None, doc_
         part_doc.add_header('Content-Disposition', f'attachment; filename="{doc_filename}"')
         msg.attach(part_doc)
         
-    # 附件 2：供应商反馈评估表 (attachment 2)
     if feedback_bytes:
         part_fb = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         part_fb.set_payload(feedback_bytes)
@@ -660,10 +703,9 @@ if excel_file is not None and template_file is not None:
             df['Normalized_Status'] = 'Pending'
 
         # =========================================================================
-        # 模式一：FEBER 报告生成与邮件协同
+        # 模式一：FEBER 报告生成与邮件协同（加入增强对比度 + 醒目步骤序号 + 可选指引）
         # =========================================================================
         if app_mode == "📑 FEBER 报告生成与邮件协同":
-            # 读取反馈表 Excel 二进制数据
             feedback_bytes = None
             feedback_filename = "LL Feedback table_Supplier version_V1.xlsx"
             if feedback_file is not None and os.path.exists(feedback_file):
@@ -671,15 +713,33 @@ if excel_file is not None and template_file is not None:
                     feedback_bytes = f.read()
                     
             gen_df = df.copy()
-            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">台账记录提取</span>', unsafe_allow_html=True)
             
-            search_kw = st.text_input("🔍 搜索记录:", placeholder="输入序列号/供应商/失效模式...")
+            # 顶部增加可选的操作指引分栏
+            with st.expander("📖 查看 FEBER 协同与邮件分发操作规范 (Operation Guide)", expanded=False):
+                st.markdown("""
+                <div class="guide-box">
+                    <strong>📌 闭环协同标准化作业规范：</strong><br>
+                    1. <strong>STEP 01 选取事实：</strong>从过滤后的清单中选定一条失效模式记录，系统会自动抽提 100% 原始事实。<br>
+                    2. <strong>STEP 02 AI 润色：</strong>点击直达 Teams M-PU Bot，发送生成的 Prompt，获取符合 FEBER 规范的润色结果。<br>
+                    3. <strong>STEP 03 交付闭环：</strong>粘贴回复内容，一键生成标准 Word 报告与已预设好收件人、双附件的 Outlook 邮件草稿。
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # STEP 01
+            st.markdown("""
+            <div class="bds-step-card">
+                <div class="step-header">
+                    <span class="step-number">STEP 01</span>
+                    <h4 class="step-title">选择台账记录并提取事实</h4>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            search_kw = st.text_input("🔍 关键字搜索过滤 (序列号 / 供应商 / 失效模式):", placeholder="输入关键字实时过滤台账...")
             if search_kw:
                 gen_df = gen_df[gen_df.astype(str).apply(lambda r: r.str.contains(search_kw, case=False).any(), axis=1)]
                 
             selected_record_idx = st.selectbox(
-                "👉 请选择台账记录：",
+                "👉 请选择目标记录 (Target Record)：",
                 options=gen_df.index,
                 format_func=lambda x: f"[{gen_df.loc[x, serial_no_col]}] {gen_df.loc[x, 'Failure Mode']} - {gen_df.loc[x, 'Project/Part name']}"
             )
@@ -696,7 +756,6 @@ if excel_file is not None and template_file is not None:
                         raw_facts_list.append(f"{col_name}: {val_str}")
             raw_facts_block = "\n".join(raw_facts_list)
             
-            # 1:1 还原包含 3 列表格原型的标准 FEBER Prompt
             prompt_content = f"""Please create me a short and precise lessons learned report out of the attached document in American English.
 You are an honest engineer; you provide always links to the sources and name the original slide/page number.
 Please stick to the facts. In case you have additional topics, supporting or additional useful information be creative, add them and highlight them in italic.
@@ -748,19 +807,33 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
 ==================== [Raw Master List Facts] ====================
 {raw_facts_block}"""
 
-            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">Teams M-PU 润色 Prompt</span>', unsafe_allow_html=True)
-            c_p, c_b = st.columns([3, 1])
+            # STEP 02
+            st.markdown("""
+            <div class="bds-step-card">
+                <div class="step-header">
+                    <span class="step-number">STEP 02</span>
+                    <h4 class="step-title">复制 Prompt 并在 Teams M-PU Bot 中润色</h4>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            c_p, c_b = st.columns([3.2, 1])
             with c_p:
-                st.text_area("📋 完整工程 Prompt (可一键复制):", prompt_content, height=220)
+                st.text_area("📋 完整工程 Prompt (点击右上角图标一键复制):", prompt_content, height=220)
             with c_b:
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.link_button("🚀 一键直达 Teams M-PU Bot", TEAMS_BOT_URL, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            st.markdown('<div class="bds-card">', unsafe_allow_html=True)
-            st.markdown('<span class="bds-step-badge">数据回填与交付件生成</span>', unsafe_allow_html=True)
-            col_in, col_sup = st.columns([3, 2])
+            # STEP 03
+            st.markdown("""
+            <div class="bds-step-card">
+                <div class="step-header">
+                    <span class="step-number">STEP 03</span>
+                    <h4 class="step-title">粘贴 Bot 回复并生成交付件</h4>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            col_in, col_sup = st.columns([3.2, 1.8])
             with col_in:
                 bot_reply = st.text_area(
                     "📥 粘贴 M-PU Bot 润色后的完整回复：",
@@ -768,7 +841,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     placeholder="粘贴 Bot 输出的包含 0. Abstract, 1. Product/Process, 2. Problem, 3. Lessons, 4. Potentially affected 的完整文本..."
                 )
             with col_sup:
-                selected_sups = st.multiselect("👥 选择收件供应商 (自动读取 Vendor code 邮箱):", options=list(supplier_dict.keys()))
+                selected_sups = st.multiselect("👥 选择收件供应商 (自动解析邮箱):", options=list(supplier_dict.keys()))
                 to_emails_list = []
                 for s in selected_sups:
                     to_emails_list.extend(supplier_dict[s])
@@ -787,14 +860,12 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                         doc.save(bio)
                         doc_bytes = bio.getvalue()
                         
-                        # 确保提取出真实的序列号用于文件名与主题
                         raw_serial = str(selected_row.get(serial_no_col, '')).strip()
                         if not raw_serial or raw_serial in ['nan', 'None']:
                             raw_serial = "LL-Export"
                             
                         doc_filename = f"LL_Template_{raw_serial}.docx"
                         
-                        # 【核心调用】：使用全新格式与主题逻辑生成邮件草稿
                         eml_bytes, final_subject = build_new_email_dual_attachment(
                             selected_row, 
                             to_emails_str, 
@@ -825,7 +896,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             st.markdown('</div>', unsafe_allow_html=True)
 
         # =========================================================================
-        # 模式二：高阶质量全景与闭环看板 (Split Matrix View)
+        # 模式二：高阶质量全景与闭环看板 (全行点击无阻联动 + 紧凑视图)
         # =========================================================================
         else:
             # 1. 核心 KPI 动态指标栏
@@ -920,6 +991,7 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
             with col_list_view:
                 st.markdown(f"##### 📋 经验库清单 (共 {len(view_df)} 条)")
                 
+                # 【全行无阻点击】：点击行内任意文字即可选中
                 event = st.dataframe(
                     view_df[valid_table_cols],
                     use_container_width=True,
@@ -957,6 +1029,8 @@ Check if Centers of Competence (CoC) or BEO working groups should be informed: h
                     """, unsafe_allow_html=True)
                     
                     st.write("")
+                    
+                    # 紧凑型高清图片视口（固定 280px 居中）
                     if case_img:
                         st.markdown("🖼 **不良图片 (Defect Picture):**")
                         c_img_space1, c_img_center, c_img_space2 = st.columns([1, 2, 1])
